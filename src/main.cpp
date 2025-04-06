@@ -14,8 +14,9 @@ Atm_led led_red;   // Red LED state machine
 void setup()
 {
   Serial.begin(9600);
-  initialize(flow, rfid, valve, led, led_blue, led_green, led_red);
+  initialize(rfid, valve, led, led_blue, led_green, led_red);
 
+  flow.begin(FLOWMETER_PIN);
   flow.onPress([](int idx, int v, int up)
                {
     Serial.println("Flowmeter button pressed");

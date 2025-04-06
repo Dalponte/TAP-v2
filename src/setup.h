@@ -14,7 +14,6 @@
 
 // Function declaration
 void initialize(
-    Atm_button &flow,
     Atm_button &rfid,
     Atm_led &valve,
     Atm_led &led,

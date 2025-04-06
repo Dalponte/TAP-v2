@@ -3,7 +3,6 @@
 #include "setup.h"
 
 void initialize(
-    Atm_button &flow,
     Atm_button &rfid,
     Atm_led &valve,
     Atm_led &led,
@@ -23,6 +22,5 @@ void initialize(
     led_green.trigger(led.EVT_ON);
     led_red.trigger(led.EVT_ON);
 
-    flow.begin(FLOWMETER_PIN);
     rfid.begin(RFID_BUTTON);
 }
