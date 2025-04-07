@@ -1,9 +1,7 @@
 #include <Arduino.h>
 #include <Automaton.h>
-#include "setup.h" // Include the setup header
-
-Atm_digital flowmeter; // Button state machine
-Atm_button rfid;       // Button state machine
+#include "setup.h"       // Include the setup header
+#include "PourMachine.h" // Include our simplified PourMachine
 
 Atm_led valve;
 Atm_led led;
@@ -11,11 +9,21 @@ Atm_led led_blue;  // Blue LED state machine
 Atm_led led_green; // Green LED state machine
 Atm_led led_red;   // Red LED state machine
 
+Atm_digital flowmeter;    // Button state machine
+Atm_button rfid;          // Button state machine
+PourMachine pour;         // Our simplified PourMachine
+atm_counter flow_counter; // Counter state machine
+
 void flow(int idx, int v, int up)
 {
-  Serial.print("Flow event: ");
-  Serial.println(v);
   led.trigger(led.EVT_TOGGLE); // Toggle the LED on flow event
+  pour.flow();
+}
+
+void onCounterReached(int idx, int v, int up)
+{
+  Serial.print("Counter reached: ");
+  Serial.println(v);
 }
 
 void setup()
@@ -23,14 +31,18 @@ void setup()
   Serial.begin(9600);
   initialize(rfid, valve, led, led_blue, led_green, led_red);
 
-  flowmeter.begin(FLOWMETER_PIN, 10, false, true)
+  // Use the constants from setup.h for the timeouts
+  pour.begin(INITIAL_TIMEOUT_MS, CONTINUE_TIMEOUT_MS);
+  pour.trace(Serial); // Enable tracing to see state transitions
+
+  flowmeter.begin(FLOWMETER_PIN, 1, false, true)
       .onChange(HIGH, flow)
       .onChange(LOW, flow);
 
   rfid.onPress([](int idx, int v, int up)
                {
-    Serial.println("RFID button pressed");
-    valve.trigger(valve.EVT_TOGGLE); });
+                 int pour_amount = 50;
+                 pour.start(pour_amount); });
 }
 
 void loop()
