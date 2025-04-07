@@ -32,8 +32,8 @@ public:
 
     PourMachine &begin(int initial_timeout_ms = 10000, int continue_timeout_ms = 3000);
     PourMachine &trace(Stream &stream);
-    PourMachine &flow();            // Method to handle flow events
-    PourMachine &start(int amount); // Method to start pour with amount
+    PourMachine &flow();
+    PourMachine &start(int pulses);
 
     int event(int id);
     void action(int id);
@@ -41,7 +41,7 @@ public:
 private:
     atm_timer_millis timer; // Timer for pouring timeout
     atm_counter remaining;  // Counter state machine
-    int pour_amount;        // Amount to pour
+    int pour_pulses;        // Amount to pour
     int initial_timeout;    // Initial timeout when starting pour
     int continue_timeout;   // Timeout after flow detected
 };

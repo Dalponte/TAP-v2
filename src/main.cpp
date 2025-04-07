@@ -9,10 +9,10 @@ Atm_led led_blue;  // Blue LED state machine
 Atm_led led_green; // Green LED state machine
 Atm_led led_red;   // Red LED state machine
 
-Atm_digital flowmeter;    // Button state machine
-Atm_button rfid;          // Button state machine
-PourMachine pour;         // Our simplified PourMachine
-atm_counter flow_counter; // Counter state machine
+Atm_digital flowmeter; // Button state machine
+PourMachine pour;      // Our simplified PourMachine
+
+Atm_button rfid; // Button state machine
 
 void flow(int idx, int v, int up)
 {
@@ -36,13 +36,12 @@ void setup()
   pour.trace(Serial); // Enable tracing to see state transitions
 
   flowmeter.begin(FLOWMETER_PIN, 1, false, true)
-      .onChange(HIGH, flow)
-      .onChange(LOW, flow);
+      .onChange(HIGH, flow);
 
   rfid.onPress([](int idx, int v, int up)
                {
-                 int pour_amount = 50;
-                 pour.start(pour_amount); });
+                 int pour_pulses = 50;
+                 pour.start(pour_pulses); });
 }
 
 void loop()

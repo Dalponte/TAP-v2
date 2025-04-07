@@ -20,14 +20,14 @@ PourMachine &PourMachine::begin(int initial_timeout_ms, int continue_timeout_ms)
     return *this;
 }
 
-// New method to start a pour with a specific amount
-PourMachine &PourMachine::start(int amount)
+// New method to start a pour with a specific pulses amount
+PourMachine &PourMachine::start(int pulses)
 {
-    pour_amount = amount;
-    remaining.set(amount);
+    pour_pulses = pulses;
+    remaining.set(pulses);
 
-    Serial.print("Starting pour with amount: ");
-    Serial.println(amount);
+    Serial.print("Starting pour with pulses amount: ");
+    Serial.println(pulses);
 
     trigger(EVT_START);
     return *this;
@@ -59,7 +59,7 @@ void PourMachine::action(int id)
         // Make sure the remaining counter is properly set
         if (remaining.value < 1)
         {
-            remaining.set(pour_amount);
+            remaining.set(pour_pulses);
         }
         return;
     }
@@ -73,9 +73,7 @@ PourMachine &PourMachine::flow()
         remaining.decrement();
 
         Serial.print("Remaining: ");
-        Serial.print(remaining.value);
-        Serial.print(" / ");
-        Serial.println(timer.value);
+        Serial.println(remaining.value);
 
         // Reset the timer using the stored continue timeout
         timer.setFromNow(this, continue_timeout);
