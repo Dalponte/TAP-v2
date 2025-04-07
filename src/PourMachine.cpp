@@ -1,6 +1,8 @@
 #include "PourMachine.h"
 #include <Automaton.h>
 
+extern Atm_led valve; // Reference to the valve defined in main.cpp
+
 PourMachine &PourMachine::begin(int initial_timeout_ms, int continue_timeout_ms)
 {
     // clang-format off
@@ -49,9 +51,11 @@ void PourMachine::action(int id)
     {
     case ENT_IDLE:
         Serial.println("PourMachine: Entering IDLE state");
+        valve.trigger(valve.EVT_OFF); // Turn valve OFF when idle
         return;
     case ENT_POURING:
         Serial.println("PourMachine: Entering POURING state");
+        valve.trigger(valve.EVT_ON); // Turn valve ON when pouring
         timer.set(initial_timeout);
 
         // Make sure the remaining counter is properly set
