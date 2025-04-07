@@ -13,14 +13,12 @@ PourMachine &PourMachine::begin(int initial_timeout_ms, int continue_timeout_ms)
 
     Machine::begin(state_table, ELSE);
 
-    // Store timeout values in member variables
     initial_timeout = initial_timeout_ms;
     continue_timeout = continue_timeout_ms;
 
     return *this;
 }
 
-// New method to start a pour with a specific pulses amount
 PourMachine &PourMachine::start(int pulses)
 {
     pour_pulses = pulses;
@@ -40,7 +38,7 @@ int PourMachine::event(int id)
     case EVT_TIMER:
         return timer.expired(this);
     case EVT_STOP:
-        return remaining.expired(); // Check if counter has reached zero
+        return remaining.expired();
     }
     return 0;
 }
@@ -54,7 +52,7 @@ void PourMachine::action(int id)
         return;
     case ENT_POURING:
         Serial.println("PourMachine: Entering POURING state");
-        timer.set(initial_timeout); // Use the stored initial timeout
+        timer.set(initial_timeout);
 
         // Make sure the remaining counter is properly set
         if (remaining.value < 1)
@@ -65,18 +63,15 @@ void PourMachine::action(int id)
     }
 }
 
-// Method to update the counter when flow is detected
 PourMachine &PourMachine::flow()
 {
     if (state() == POURING)
     {
         remaining.decrement();
+        timer.setFromNow(this, continue_timeout);
 
         Serial.print("Remaining: ");
         Serial.println(remaining.value);
-
-        // Reset the timer using the stored continue timeout
-        timer.setFromNow(this, continue_timeout);
 
         // Check if remaining has expired after this decrement
         if (remaining.expired())

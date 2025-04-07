@@ -16,7 +16,7 @@ Atm_button rfid; // Button state machine
 
 void flow(int idx, int v, int up)
 {
-  led.trigger(led.EVT_TOGGLE); // Toggle the LED on flow event
+  led.trigger(led.EVT_TOGGLE);
   pour.flow();
 }
 
