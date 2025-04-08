@@ -14,6 +14,7 @@ Atm_led led_green;
 Atm_led led_red;
 
 Atm_digital flowmeter;
+Atm_timer flow_timer; // Timer for flow event emissions
 Atm_pour pour;
 
 Atm_button button;
@@ -39,14 +40,34 @@ void handleMqttMessage(int idx, int v, int up)
   Serial.print("MQTT Message received: ");
 }
 
+// Callback handler for pour done event
+void pourDoneHandler(int idx, int v, int up)
+{
+  Serial.print("Pour completed! Pulses poured: ");
+  Serial.print(v);
+  Serial.print(", Remaining: ");
+  Serial.println(up);
+}
+
+// Callback handler for remaining change events
+void onRemainingChangeHandler(int idx, int v, int up)
+{
+  Serial.print("Remaining pulses: ");
+  Serial.print(v);
+  Serial.print(", Poured so far: ");
+  Serial.println(up);
+}
+
 void setup()
 {
   Serial.begin(9600);
   initialize(button, valve, led, led_blue, led_green, led_red);
 
   // Use the constants from setup.h for the timeouts
-  pour.begin(INITIAL_TIMEOUT_MS, CONTINUE_TIMEOUT_MS);
-  pour.trace(Serial); // Enable tracing to see state transitions
+  pour.begin(INITIAL_TIMEOUT_MS, CONTINUE_TIMEOUT_MS)
+      .onPourDone(pourDoneHandler)                 // Register pour done handler
+      .onRemainingChange(onRemainingChangeHandler) // Register remaining change handler
+      .trace(Serial);
 
   flowmeter.begin(FLOWMETER_PIN, 1, false, true)
       .onChange(HIGH, flow);
