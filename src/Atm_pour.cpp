@@ -1,9 +1,9 @@
-#include "PourMachine.h"
+#include "Atm_pour.h"
 #include <Automaton.h>
 
 extern Atm_led valve; // Reference to the valve defined in main.cpp
 
-PourMachine &PourMachine::begin(int initial_timeout_ms, int continue_timeout_ms)
+Atm_pour &Atm_pour::begin(int initial_timeout_ms, int continue_timeout_ms)
 {
     // clang-format off
     const static state_t state_table[] PROGMEM = {
@@ -21,7 +21,7 @@ PourMachine &PourMachine::begin(int initial_timeout_ms, int continue_timeout_ms)
     return *this;
 }
 
-PourMachine &PourMachine::start(int pulses)
+Atm_pour &Atm_pour::start(int pulses)
 {
     pour_pulses = pulses;
     remaining.set(pulses);
@@ -33,7 +33,7 @@ PourMachine &PourMachine::start(int pulses)
     return *this;
 }
 
-int PourMachine::event(int id)
+int Atm_pour::event(int id)
 {
     switch (id)
     {
@@ -45,16 +45,16 @@ int PourMachine::event(int id)
     return 0;
 }
 
-void PourMachine::action(int id)
+void Atm_pour::action(int id)
 {
     switch (id)
     {
     case ENT_IDLE:
-        Serial.println("PourMachine: Entering IDLE state");
+        Serial.println("Atm_pour: Entering IDLE state");
         valve.trigger(valve.EVT_OFF); // Turn valve OFF when idle
         return;
     case ENT_POURING:
-        Serial.println("PourMachine: Entering POURING state");
+        Serial.println("Atm_pour: Entering POURING state");
         valve.trigger(valve.EVT_ON); // Turn valve ON when pouring
         timer.set(initial_timeout);
 
@@ -67,7 +67,7 @@ void PourMachine::action(int id)
     }
 }
 
-PourMachine &PourMachine::flow()
+Atm_pour &Atm_pour::flow()
 {
     if (state() == POURING)
     {
@@ -86,7 +86,7 @@ PourMachine &PourMachine::flow()
     return *this;
 }
 
-PourMachine &PourMachine::trace(Stream &stream)
+Atm_pour &Atm_pour::trace(Stream &stream)
 {
     Machine::setTrace(&stream, atm_serial_debug::trace,
                       "POUR\0EVT_TIMER\0EVT_START\0EVT_STOP\0ELSE\0IDLE\0POURING");

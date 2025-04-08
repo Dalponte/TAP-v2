@@ -2,10 +2,10 @@
 
 #include <Automaton.h>
 
-class PourMachine : public Machine
+class Atm_pour : public Machine
 {
 public:
-    PourMachine(void) : Machine() {};
+    Atm_pour(void) : Machine() {};
 
     // States
     enum
@@ -30,10 +30,10 @@ public:
         ENT_POURING
     };
 
-    PourMachine &begin(int initial_timeout_ms = 10000, int continue_timeout_ms = 3000);
-    PourMachine &trace(Stream &stream);
-    PourMachine &flow();
-    PourMachine &start(int pulses);
+    Atm_pour &begin(int initial_timeout_ms = 10000, int continue_timeout_ms = 3000);
+    Atm_pour &trace(Stream &stream);
+    Atm_pour &flow();
+    Atm_pour &start(int pulses);
 
     int event(int id);
     void action(int id);

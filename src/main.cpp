@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <Automaton.h>
 #include "setup.h"
-#include "PourMachine.h"
+#include "Atm_pour.h"
 #include "Atm_mqtt_client.h"
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
@@ -14,7 +14,7 @@ Atm_led led_green;
 Atm_led led_red;
 
 Atm_digital flowmeter;
-PourMachine pour;
+Atm_pour pour;
 
 Atm_button button;
 Atm_mqtt_client mqtt;
