@@ -1,18 +1,26 @@
 #include <Arduino.h>
 #include <Automaton.h>
-#include "setup.h"       // Include the setup header
-#include "PourMachine.h" // Include our simplified PourMachine
+#include "setup.h"
+#include "PourMachine.h"
+#include "Atm_mqtt_client.h"
+
+byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+IPAddress ip(192, 168, 4, 100);
 
 Atm_led valve;
 Atm_led led;
-Atm_led led_blue;  // Blue LED state machine
-Atm_led led_green; // Green LED state machine
-Atm_led led_red;   // Red LED state machine
+Atm_led led_blue;
+Atm_led led_green;
+Atm_led led_red;
 
-Atm_digital flowmeter; // Button state machine
-PourMachine pour;      // Our simplified PourMachine
+Atm_digital flowmeter;
+PourMachine pour;
 
-Atm_button button; // Button state machine
+Atm_button button;
+Atm_mqtt_client mqtt;
+
+const char broker[] = "192.168.4.2"; // MQTT broker address
+int port = 1883;                     // MQTT broker port
 
 void flow(int idx, int v, int up)
 {
@@ -24,6 +32,11 @@ void onCounterReached(int idx, int v, int up)
 {
   Serial.print("Counter reached: ");
   Serial.println(v);
+}
+
+void handleMqttMessage(int idx, int v, int up)
+{
+  Serial.print("MQTT Message received: ");
 }
 
 void setup()
@@ -38,10 +51,13 @@ void setup()
   flowmeter.begin(FLOWMETER_PIN, 1, false, true)
       .onChange(HIGH, flow);
 
+  mqtt.begin(mac, ip, broker, port, "client_id")
+      .connect();
+
   button.onPress([](int idx, int v, int up)
                  {
-                 int pour_pulses = 50;
-                 pour.start(pour_pulses); });
+                   int pour_pulses = 50;
+                   pour.start(pour_pulses); });
 }
 
 void loop()
