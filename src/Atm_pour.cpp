@@ -34,16 +34,16 @@ Atm_pour &Atm_pour::onPourDone(atm_cb_push_t callback, int idx)
     return *this;
 }
 
-// Add connector methods for remaining change events
-Atm_pour &Atm_pour::onRemainingChange(Machine &machine, int event)
+// Renamed connector methods for flow status
+Atm_pour &Atm_pour::onFlowStatus(Machine &machine, int event)
 {
-    onPush(connectors, ON_REMAINING_CHANGE, 0, 0, 0, machine, event);
+    onPush(connectors, ON_FLOW_STATUS, 0, 0, 0, machine, event);
     return *this;
 }
 
-Atm_pour &Atm_pour::onRemainingChange(atm_cb_push_t callback, int idx)
+Atm_pour &Atm_pour::onFlowStatus(atm_cb_push_t callback, int idx)
 {
-    onPush(connectors, ON_REMAINING_CHANGE, 0, 0, 0, callback, idx);
+    onPush(connectors, ON_FLOW_STATUS, 0, 0, 0, callback, idx);
     return *this;
 }
 
@@ -99,18 +99,21 @@ void Atm_pour::action(int id)
     }
 }
 
+// New method to manually trigger flow updates
+Atm_pour &Atm_pour::updateFlow()
+{
+    // Push the flow status through the renamed connector
+    push(connectors, ON_FLOW_STATUS, 0, remaining.value, pour_pulses - remaining.value);
+    return *this;
+}
+
 Atm_pour &Atm_pour::flow()
 {
     if (state() == POURING)
     {
         remaining.decrement();
         timer.setFromNow(this, continue_timeout);
-
-        Serial.print("Remaining: ");
-        Serial.println(remaining.value);
-
-        // Push the remaining value through the ON_REMAINING_CHANGE connector
-        push(connectors, ON_REMAINING_CHANGE, 0, remaining.value, pour_pulses - remaining.value);
+        Serial.print(" >");
 
         // Check if remaining has expired after this decrement
         if (remaining.expired())

@@ -28,14 +28,14 @@ public:
     {
         ENT_IDLE,
         ENT_POURING,
-        EXT_POURING // Add exit action for POURING state
+        EXT_POURING
     };
 
-    // Add the new connector for remaining value changes
+    // Connectors
     enum
     {
         ON_POUR_DONE,
-        ON_REMAINING_CHANGE,
+        ON_FLOW_STATUS,
         CONN_MAX
     };
     atm_connector connectors[CONN_MAX];
@@ -44,14 +44,15 @@ public:
     Atm_pour &trace(Stream &stream);
     Atm_pour &flow();
     Atm_pour &start(int pulses);
+    Atm_pour &updateFlow();
 
     // Pour done event connector methods
     Atm_pour &onPourDone(Machine &machine, int event);
     Atm_pour &onPourDone(atm_cb_push_t callback, int idx = 0);
 
-    // New connector methods for remaining change events
-    Atm_pour &onRemainingChange(Machine &machine, int event);
-    Atm_pour &onRemainingChange(atm_cb_push_t callback, int idx = 0);
+    // Renamed connector methods for flow status updates
+    Atm_pour &onFlowStatus(Machine &machine, int event);
+    Atm_pour &onFlowStatus(atm_cb_push_t callback, int idx = 0);
 
     int event(int id);
     void action(int id);

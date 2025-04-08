@@ -12,10 +12,11 @@
 #define VALVE_PIN 22     // Mosfet valve simulation pin
 #define BUTTON 23        // Button to trigger the pour
 
-#define INITIAL_TIMEOUT_MS 10000 // Initial timeout in milliseconds
-#define CONTINUE_TIMEOUT_MS 3000 // Continue timeout in milliseconds
+// Pour process timing
+#define INITIAL_TIMEOUT_MS 10000
+#define CONTINUE_TIMEOUT_MS 3000
+#define FLOW_UPDATE_INTERVAL_MS 500
 
-// Function declaration
 void initialize(
     Atm_button &button,
     Atm_led &valve,
