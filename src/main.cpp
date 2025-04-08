@@ -12,7 +12,7 @@ Atm_led led_red;   // Red LED state machine
 Atm_digital flowmeter; // Button state machine
 PourMachine pour;      // Our simplified PourMachine
 
-Atm_button rfid; // Button state machine
+Atm_button button; // Button state machine
 
 void flow(int idx, int v, int up)
 {
@@ -29,7 +29,7 @@ void onCounterReached(int idx, int v, int up)
 void setup()
 {
   Serial.begin(9600);
-  initialize(rfid, valve, led, led_blue, led_green, led_red);
+  initialize(button, valve, led, led_blue, led_green, led_red);
 
   // Use the constants from setup.h for the timeouts
   pour.begin(INITIAL_TIMEOUT_MS, CONTINUE_TIMEOUT_MS);
@@ -38,8 +38,8 @@ void setup()
   flowmeter.begin(FLOWMETER_PIN, 1, false, true)
       .onChange(HIGH, flow);
 
-  rfid.onPress([](int idx, int v, int up)
-               {
+  button.onPress([](int idx, int v, int up)
+                 {
                  int pour_pulses = 50;
                  pour.start(pour_pulses); });
 }
