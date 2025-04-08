@@ -43,8 +43,9 @@ public:
     Atm_pour &begin(int initial_timeout_ms = 10000, int continue_timeout_ms = 3000);
     Atm_pour &trace(Stream &stream);
     Atm_pour &flow();
-    Atm_pour &start(int pulses);
+    Atm_pour &start(int pulses, const char *id = ""); // Modified to accept an ID
     Atm_pour &updateFlow();
+    const char *getCurrentId(); // New method to get current ID
 
     // Pour done event connector methods
     Atm_pour &onPourDone(Machine &machine, int event);
@@ -63,4 +64,5 @@ private:
     int pour_pulses;        // Amount to pour
     int initial_timeout;    // Initial timeout when starting pour
     int continue_timeout;   // Timeout after flow detected
+    char current_id[32];    // Storage for the pour ID
 };

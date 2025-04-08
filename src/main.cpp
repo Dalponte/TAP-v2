@@ -29,16 +29,15 @@ void flow(int idx, int v, int up)
   pour.flow();
 }
 
-// Flow timer callback to update remaining values periodically
-void onFlowTimer(int idx, int v, int up)
+void startPour(int pulses, const char *id)
 {
-  pour.updateFlow();
+  pour.start(pulses, id);
+  flow_update_timer.start();
 }
 
-void onCounterReached(int idx, int v, int up)
+void handleFlowUpdateTimer(int idx, int v, int up)
 {
-  Serial.print("Counter reached: ");
-  Serial.println(v);
+  pour.updateFlow();
 }
 
 void handleMqttMessage(int idx, int v, int up)
@@ -46,16 +45,18 @@ void handleMqttMessage(int idx, int v, int up)
   Serial.print("MQTT Message received: ");
 }
 
-void pourDoneHandler(int idx, int v, int up)
+void handlePourDone(int idx, int v, int up)
 {
   flow_update_timer.stop();
   Serial.print("Pour completed! Pulses poured: ");
   Serial.print(v);
   Serial.print(", Remaining: ");
-  Serial.println(up);
+  Serial.print(up);
+  Serial.print(", ID: ");
+  Serial.println(pour.getCurrentId());
 }
 
-void onFlowStatusHandler(int idx, int v, int up)
+void handleFlowStatus(int idx, int v, int up)
 {
   Serial.println();
   Serial.print(up);
@@ -68,27 +69,28 @@ void setup()
   Serial.begin(9600);
   initialize(button, valve, led, led_blue, led_green, led_red);
 
-  pour.begin(INITIAL_TIMEOUT_MS, CONTINUE_TIMEOUT_MS)
-      .onPourDone(pourDoneHandler)       // Register pour done handler
-      .onFlowStatus(onFlowStatusHandler) // Register flow status handler with renamed method
-      .trace(Serial);
-
+  // Setup pour process
   flowmeter.begin(FLOWMETER_PIN, 1, false, true)
       .onChange(HIGH, flow);
 
+  flow_update_timer.begin(FLOW_UPDATE_INTERVAL_MS)
+      .repeat(ATM_COUNTER_OFF)
+      .onTimer(handleFlowUpdateTimer);
+
+  pour.begin(INITIAL_TIMEOUT_MS, CONTINUE_TIMEOUT_MS)
+      .onPourDone(handlePourDone)
+      .onFlowStatus(handleFlowStatus)
+      .trace(Serial);
+
+  // Setup communication
   mqtt.begin(mac, ip, broker, port, "client_id")
       .connect();
 
+  // Temporary button to simulate RFID tag reading
   button.onPress([](int idx, int v, int up)
                  {
                    int pour_pulses = 50;
-                   pour.start(pour_pulses);
-                   flow_update_timer.start(); // Start flow timer when pouring begins
-                 });
-
-  flow_update_timer.begin(FLOW_UPDATE_INTERVAL_MS)
-      .repeat(ATM_COUNTER_OFF) // Run indefinitely
-      .onTimer(onFlowTimer);   // Use our callback to check pour status
+                   startPour(pour_pulses, "test-tag-123"); });
 }
 
 void loop()
