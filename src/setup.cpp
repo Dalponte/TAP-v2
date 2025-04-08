@@ -16,7 +16,7 @@ void initialize(
     led_green.begin(PIN_GREEN);
     led_red.begin(PIN_RED);
 
-    valve.trigger(valve.EVT_ON);
+    valve.trigger(valve.EVT_OFF);
     led.trigger(led.EVT_ON);
     led_blue.trigger(led.EVT_ON);
     led_green.trigger(led.EVT_ON);
