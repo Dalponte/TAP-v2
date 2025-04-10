@@ -1,5 +1,6 @@
 #include "TapService.h"
 #include "setup.h"
+#include <ArduinoJson.h>
 
 // Initialize static member
 TapService *TapService::_instance = nullptr;
@@ -60,17 +61,26 @@ void TapService::handleFlowUpdateTimer(int idx, int v, int up)
     }
 }
 
-void TapService::handlePourDone(int idx, int v, int up)
+void TapService::handlePourDone(int idx, int pulses, int remaining)
 {
     if (_instance)
     {
         _instance->_flow_update_timer.stop();
 
+        JsonDocument doc;
+        doc["id"] = _instance->_pour.getCurrentId();
+        doc["p"] = pulses;
+        doc["r"] = remaining;
+
+        char json[128];
+        serializeJson(doc, json);
+        _instance->_mqtt.publish("tap/pour", json);
+
         Serial.println();
         Serial.print("Pour completed! Pulses poured: ");
-        Serial.print(v);
+        Serial.print(pulses);
         Serial.print(", Remaining: ");
-        Serial.print(up);
+        Serial.print(remaining);
         Serial.print(", ID: ");
         Serial.println(_instance->_pour.getCurrentId());
     }
@@ -78,8 +88,15 @@ void TapService::handlePourDone(int idx, int v, int up)
 
 void TapService::handleFlowStatus(int idx, int v, int up)
 {
-    Serial.println();
-    Serial.print(up);
-    Serial.print(" |  ");
-    Serial.print(v);
+    if (_instance)
+    {
+        JsonDocument doc;
+        doc["id"] = _instance->_pour.getCurrentId();
+        doc["f"] = up;
+        doc["t"] = v;
+
+        char json[64];
+        serializeJson(doc, json);
+        _instance->_mqtt.publish("tap/flow", json);
+    }
 }

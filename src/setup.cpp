@@ -19,8 +19,8 @@ void initialize(
     valve.trigger(valve.EVT_OFF);
     led.trigger(led.EVT_ON);
     led_blue.trigger(led.EVT_ON);
-    led_green.trigger(led.EVT_ON);
-    led_red.trigger(led.EVT_ON);
+    led_green.trigger(led.EVT_OFF);
+    led_red.trigger(led.EVT_OFF);
 
     button.begin(BUTTON);
 }
