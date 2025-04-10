@@ -26,9 +26,9 @@ void TapService::begin(
 
     // Setup pour process
     _pour.begin(initial_timeout_ms, continue_timeout_ms)
+        // .trace(Serial)
         .onPourDone(handlePourDone)
-        .onFlowStatus(handleFlowStatus)
-        .trace(Serial);
+        .onFlowStatus(handleFlowStatus);
 }
 
 void TapService::startPour(int pulses, const char *id)
@@ -66,6 +66,7 @@ void TapService::handlePourDone(int idx, int v, int up)
     {
         _instance->_flow_update_timer.stop();
 
+        Serial.println();
         Serial.print("Pour completed! Pulses poured: ");
         Serial.print(v);
         Serial.print(", Remaining: ");

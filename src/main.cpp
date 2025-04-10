@@ -24,7 +24,9 @@ int port = 1883;                     // MQTT broker port
 
 void handleMqttMessage(int idx, int v, int up)
 {
-  Serial.print("MQTT Message received: ");
+  Serial.print(">>>> MQTT Message received: ");
+  int pour_pulses = 50;
+  tapService.startPour(pour_pulses, "test-tag-123");
 }
 
 void setup()
@@ -37,13 +39,15 @@ void setup()
 
   // Setup communication
   mqtt.begin(mac, ip, broker, port, "client_id")
-      .connect();
+      .onReceive(handleMqttMessage)
+      .trace(Serial);
 
-  // Temporary button to simulate RFID tag reading
+  // Temporary button to simulate RFID tag reading and publish a message
   button.onPress([](int idx, int v, int up)
                  {
-                   int pour_pulses = 50;
-                   tapService.startPour(pour_pulses, "test-tag-123"); });
+
+                   // Publish a message to the tap/out topic
+                   mqtt.publish("tap/out", "Button pressed, pour started"); });
 }
 
 void loop()
