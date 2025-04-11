@@ -6,10 +6,17 @@
 class TapService
 {
 public:
-    // Remove mqtt parameter from constructor
-    TapService(Atm_led &valve, Atm_led &led);
+    static TapService &getInstance()
+    {
+        if (!_instance)
+        {
+            _instance = new TapService();
+        }
+        return *_instance;
+    }
 
-    // Initialize the service
+    void init(Atm_led &valve, Atm_led &led);
+
     void begin(
         int initial_timeout_ms,
         int continue_timeout_ms,
@@ -30,11 +37,18 @@ public:
     void onFlowStatus(FlowStatusCallback callback);
 
 private:
-    // State machines
-    Atm_led &_valve;
-    Atm_digital &_flowmeter;
-    Atm_led &_led;
+    // Private constructor for singleton
+    TapService();
 
+    // No copy or assignment
+    TapService(const TapService &) = delete;
+    TapService &operator=(const TapService &) = delete;
+
+    // References to external objects
+    Atm_led *_valve = nullptr;
+    Atm_led *_led = nullptr;
+
+    // State machines
     Atm_digital flowmeter;
     Atm_timer _flow_update_timer;
     Atm_pour _pour;
@@ -49,6 +63,5 @@ private:
     static void handlePourDone(int idx, int pulses, int remaining);
     static void handleFlowStatus(int idx, int v, int up);
 
-    // Need a static pointer to access instance from static callbacks
     static TapService *_instance;
 };

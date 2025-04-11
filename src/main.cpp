@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <Automaton.h>
-#include <ArduinoJson.h>
 #include "setup.h"
 #include "Atm_pour.h"
 #include "Atm_mqtt_client.h"
@@ -18,17 +17,16 @@ Atm_led led_red;
 
 Atm_button button;
 
-// Use singleton instance instead of direct instantiation
-TapService tapService(valve, led);
+// Use singleton instance for both services
+TapService &tapService = TapService::getInstance();
+MqttService &mqttService = MqttService::getInstance();
 
 const char broker[] = "192.168.4.2"; // MQTT broker address
 int port = 1883;                     // MQTT broker port
 
 void handleButtonPress(int idx, int v, int up)
 {
-  JsonDocument doc;
-  doc["id"] = "button-press";
-  MqttService::getInstance().publishJson("tap/out", doc);
+  mqttService.publish("tap/out", "Button pressed!");
   led_blue.trigger(led_blue.EVT_OFF);
 }
 
@@ -58,23 +56,26 @@ void onMqttMessageReceived(const char *topic, const char *message)
   led_green.trigger(led_green.EVT_OFF);
 }
 
+void handlePourStart(const char *message)
+{
+  Serial.println(message);
+
+  // @TODO For testing, start a simple pour with fixed values
+  // This doesn't parse the message yet, just triggers the pour
+  tapService.startPour(10, "mqtt-test");
+
+  led_blue.trigger(led_blue.EVT_ON);
+}
+
 // Callbacks for TapService events
 void handlePourDone(const char *id, int pulses, int remaining)
 {
-  JsonDocument doc;
-  doc["id"] = id;
-  doc["p"] = pulses;
-  doc["r"] = remaining;
-  MqttService::getInstance().publishJson("tap/pour", doc);
+  mqttService.publish("tap/pour", "Pour done!");
 }
 
 void handleFlowStatus(const char *id, int flowRate, int totalPulses)
 {
-  JsonDocument doc;
-  doc["id"] = id;
-  doc["f"] = flowRate;
-  doc["t"] = totalPulses;
-  MqttService::getInstance().publishJson("tap/flow", doc);
+  mqttService.publish("tap/flow", "Flow status!");
 }
 
 void setup()
@@ -82,11 +83,12 @@ void setup()
   Serial.begin(9600);
   initialize(button, valve, led, led_blue, led_green, led_red);
 
-  // Initialize MQTT service and register message handler
-  MqttService::getInstance().begin(mac, ip, broker, port, "client_id");
-  MqttService::getInstance().onMessage(onMqttMessageReceived);
+  tapService.init(valve, led);
 
-  // Initialize tap service and register event handlers
+  mqttService.begin(mac, ip, broker, port, "client_id");
+  mqttService.onMessage(onMqttMessageReceived);
+  mqttService.onPourStart(handlePourStart);
+
   tapService.begin(INITIAL_TIMEOUT_MS, CONTINUE_TIMEOUT_MS, FLOW_UPDATE_INTERVAL_MS);
   tapService.onPourDone(handlePourDone);
   tapService.onFlowStatus(handleFlowStatus);

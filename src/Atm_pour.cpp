@@ -103,10 +103,8 @@ void Atm_pour::action(int id)
         }
         return;
     case EXT_POURING:
-        // Push the POUR_DONE event when exiting the POURING state
         // Send: pulses poured as v, remaining pulses as up
         push(connectors, ON_POUR_DONE, 0, pour_pulses - remaining.value, remaining.value);
-        Serial.println("Atm_pour: Exiting POURING state");
         return;
     }
 }

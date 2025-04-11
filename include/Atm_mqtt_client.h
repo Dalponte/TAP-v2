@@ -26,10 +26,12 @@ public:
   Atm_mqtt_client &begin(MqttClient &mqttClient, const char *broker, int port, const char *clientId);
   Atm_mqtt_client &connect();
   Atm_mqtt_client &disconnect();
-  Atm_mqtt_client &onReceive(Machine &machine, int event);
-  Atm_mqtt_client &onReceive(atm_cb_push_t callback, int idx = 0);
-  Atm_mqtt_client &onSend(Machine &machine, int event);
-  Atm_mqtt_client &onSend(atm_cb_push_t callback, int idx = 0);
+
+  Atm_mqtt_client &onConnected(Machine &machine, int event);
+  Atm_mqtt_client &onConnected(atm_cb_push_t callback, int idx = 0);
+  Atm_mqtt_client &onDisconnected(Machine &machine, int event);
+  Atm_mqtt_client &onDisconnected(atm_cb_push_t callback, int idx = 0);
+
   Atm_mqtt_client &publish(const char *topic, const char *payload);
   Atm_mqtt_client &trace(Stream &stream);
   Atm_mqtt_client &setupMessageHandler();
@@ -48,11 +50,11 @@ private:
     LP_CONNECTED
   };
 
-  // Connectors
+  // Connectors - replaced with connection state connectors
   enum
   {
-    ON_RECEIVE,
-    ON_SEND,
+    ON_CONNECTED,
+    ON_DISCONNECTED,
     CONN_MAX
   };
 

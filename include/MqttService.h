@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include <SPI.h>
 #include <Ethernet.h>
 #include <ArduinoMqttClient.h>
@@ -19,7 +18,6 @@ struct PourRequest
 class MqttService
 {
 public:
-    // Get singleton instance
     static MqttService &getInstance()
     {
         if (!_instance)
@@ -31,19 +29,32 @@ public:
 
     void begin(uint8_t *mac, IPAddress ip, const char *broker, int port, const char *clientId = "client_id");
     void publish(const char *topic, const char *payload);
-    void publishJson(const char *topic, JsonDocument &doc);
 
     // Register message callback
     typedef void (*MessageCallback)(const char *topic, const char *message);
     void onMessage(MessageCallback callback);
 
-    // Static callback for MQTT message handling
-    static void handleMqttMessage(int idx, int v, int up);
+    // New callback specifically for pour requests
+    typedef void (*PourStartCallback)(const char *message);
+    void onPourStart(PourStartCallback callback);
+
+    // Static callback for MQTT message handling - updated signature
+    static void handleMqttMessage(int messageSize);
+
+    // Callbacks for connection events - now static
+    static void onConnected(int idx, int v, int up);
+    static void onDisconnected(int idx, int v, int up);
+
+    // Process a received message
+    void processMessage();
+
+    // Get current message content
+    const char *getMessageTopic() const;
+    const char *getMessageContent() const;
 
     // Static method to parse pour request JSON
     static PourRequest parsePourRequest(const char *message);
 
-    // Make Atm_mqtt_client public for TapService (temporary solution)
     Atm_mqtt_client _mqtt;
 
 private:
@@ -57,7 +68,10 @@ private:
     EthernetClient _ethClient;
     MqttClient _mqttClient{_ethClient};
     MessageCallback _messageCallback;
+    PourStartCallback _pourStartCallback; // New callback for pour start events
 
-    // Static reference for callback and singleton
+    // Buffer for message storage
+    char _messageBuffer[256];
+
     static MqttService *_instance;
 };

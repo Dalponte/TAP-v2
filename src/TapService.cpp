@@ -1,15 +1,18 @@
 #include "TapService.h"
 #include "setup.h"
-#include <ArduinoJson.h>
 
 // Initialize static member
 TapService *TapService::_instance = nullptr;
 
-TapService::TapService(Atm_led &valve, Atm_led &led)
-    : _valve(valve), _flowmeter(flowmeter), _led(led),
-      _pourDoneCallback(nullptr), _flowStatusCallback(nullptr)
+TapService::TapService()
+    : _pourDoneCallback(nullptr), _flowStatusCallback(nullptr)
 {
-    _instance = this;
+}
+
+void TapService::init(Atm_led &valve, Atm_led &led)
+{
+    _valve = &valve;
+    _led = &led;
 }
 
 void TapService::begin(
@@ -59,7 +62,7 @@ void TapService::handleFlow(int idx, int v, int up)
 {
     if (_instance)
     {
-        _instance->_led.trigger(_instance->_led.EVT_TOGGLE);
+        _instance->_led->trigger(_instance->_led->EVT_TOGGLE);
         _instance->_pour.flow();
     }
 }

@@ -4,22 +4,33 @@
 MqttService *MqttService::_instance = nullptr;
 
 MqttService::MqttService()
-    : _messageCallback(nullptr)
+    : _messageCallback(nullptr), _pourStartCallback(nullptr)
 {
-    // Instance is set in getInstance()
+    memset(_messageBuffer, 0, sizeof(_messageBuffer));
 }
 
 void MqttService::begin(uint8_t *mac, IPAddress ip, const char *broker, int port, const char *clientId)
 {
-    // Setup Ethernet connection
     Ethernet.begin(mac, ip);
-    delay(1000); // Allow Ethernet to initialize
+    delay(1500); // Allow Ethernet to initialize
 
-    // Setup MQTT client
     _mqtt.begin(_mqttClient, broker, port, clientId)
-        .connect()
-        .onReceive(handleMqttMessage)
-        .trace(Serial);
+        .onConnected(onConnected)
+        .onDisconnected(onDisconnected)
+        .trace(Serial)
+        .connect();
+}
+
+void MqttService::onConnected(int idx, int v, int up)
+{
+    Serial.println("MqttService: MQTT client connected");
+    _instance->_mqttClient.onMessage(handleMqttMessage);
+    _instance->_mqttClient.subscribe("tap/in");
+}
+
+void MqttService::onDisconnected(int idx, int v, int up)
+{
+    Serial.println("MqttService: MQTT client disconnected");
 }
 
 void MqttService::publish(const char *topic, const char *payload)
@@ -27,24 +38,48 @@ void MqttService::publish(const char *topic, const char *payload)
     _mqtt.publish(topic, payload);
 }
 
-void MqttService::publishJson(const char *topic, JsonDocument &doc)
+void MqttService::handleMqttMessage(int messageSize)
 {
-    char json[256];
-    serializeJson(doc, json);
-    _mqtt.publish(topic, json);
+    if (_instance)
+    {
+        // Get topic as String and then convert to const char*
+        String topicStr = _instance->_mqttClient.messageTopic();
+        Serial.print("Topic: ");
+        Serial.print(topicStr);
+        Serial.print(", Length: ");
+        Serial.println(messageSize);
+
+        // Clear previous message
+        memset(_instance->_messageBuffer, 0, sizeof(_instance->_messageBuffer));
+
+        // Read the message into our buffer
+        size_t index = 0;
+        while (_instance->_mqttClient.available() && index < sizeof(_instance->_messageBuffer) - 1)
+        {
+            _instance->_messageBuffer[index++] = (char)_instance->_mqttClient.read();
+        }
+        _instance->_messageBuffer[index] = '\0';
+
+        Serial.print("Content: ");
+        Serial.println(_instance->_messageBuffer);
+
+        // Call user message callback if registered
+        if (_instance->_messageCallback)
+        {
+            _instance->_messageCallback(topicStr.c_str(), _instance->_messageBuffer);
+        }
+
+        // If this is a pour request topic, call the pour start callback
+        if (topicStr == "tap/in" && _instance->_pourStartCallback)
+        {
+            _instance->_pourStartCallback(_instance->_messageBuffer);
+        }
+    }
 }
 
-void MqttService::handleMqttMessage(int idx, int v, int up)
+void MqttService::processMessage()
 {
-    Serial.print(">>>up: ");
-    Serial.println(up);
-
-    if (_instance && _instance->_messageCallback)
-    {
-        // Cast the integer back to a char pointer to get the message
-        const char *message = (const char *)v;
-        _instance->_messageCallback("tap/in", message);
-    }
+    Serial.println("processMessage() is deprecated, message already processed by handler");
 }
 
 void MqttService::onMessage(MessageCallback callback)
@@ -52,55 +87,24 @@ void MqttService::onMessage(MessageCallback callback)
     _messageCallback = callback;
 }
 
+void MqttService::onPourStart(PourStartCallback callback)
+{
+    _pourStartCallback = callback;
+}
+
 PourRequest MqttService::parsePourRequest(const char *message)
 {
-    PourRequest result = {nullptr, 0, false, nullptr};
-    static char errorBuffer[80]; // Buffer for storing error messages
+    PourRequest request;
 
-    JsonDocument mqttDoc;
-    JsonDocument dataDoc;
+    // Simply print the message without parsing
+    Serial.println("Pour request received:");
+    Serial.println(message);
 
-    DeserializationError mqttError = deserializeJson(mqttDoc, message);
-    if (mqttError)
-    {
-        snprintf(errorBuffer, sizeof(errorBuffer), "Error parsing MQTT JSON: %s", mqttError.c_str());
-        result.errorMessage = errorBuffer;
-        return result;
-    }
+    // Set default values for the request
+    request.isValid = false;
+    request.errorMessage = "Parse not implemented";
+    request.id = "";
+    request.pulses = 0;
 
-    const char *data = mqttDoc["data"];
-    if (!data)
-    {
-        result.errorMessage = "Missing 'data' field in MQTT message";
-        return result;
-    }
-
-    DeserializationError dataError = deserializeJson(dataDoc, data);
-    if (dataError)
-    {
-        snprintf(errorBuffer, sizeof(errorBuffer), "Error parsing data JSON: %s", dataError.c_str());
-        result.errorMessage = errorBuffer;
-        return result;
-    }
-
-    const char *id = dataDoc["id"];
-    int remaining = dataDoc["remaining"];
-
-    if (!id)
-    {
-        result.errorMessage = "Missing 'id' field in data";
-        return result;
-    }
-
-    if (remaining <= 0)
-    {
-        result.errorMessage = "Error: remaining value must be a positive number";
-        return result;
-    }
-
-    result.id = id;
-    result.pulses = remaining;
-    result.isValid = true;
-
-    return result;
+    return request;
 }
