@@ -17,10 +17,9 @@ Atm_led led_green;
 Atm_led led_red;
 
 Atm_button button;
-Atm_mqtt_client mqtt;
 
-TapService tapService(valve, led, mqtt);
-MqttService mqttService(mqtt);
+// Use singleton instance instead of direct instantiation
+TapService tapService(valve, led);
 
 const char broker[] = "192.168.4.2"; // MQTT broker address
 int port = 1883;                     // MQTT broker port
@@ -29,7 +28,7 @@ void handleButtonPress(int idx, int v, int up)
 {
   JsonDocument doc;
   doc["id"] = "button-press";
-  mqttService.publishJson("tap/out", doc);
+  MqttService::getInstance().publishJson("tap/out", doc);
   led_blue.trigger(led_blue.EVT_OFF);
 }
 
@@ -59,17 +58,38 @@ void onMqttMessageReceived(const char *topic, const char *message)
   led_green.trigger(led_green.EVT_OFF);
 }
 
+// Callbacks for TapService events
+void handlePourDone(const char *id, int pulses, int remaining)
+{
+  JsonDocument doc;
+  doc["id"] = id;
+  doc["p"] = pulses;
+  doc["r"] = remaining;
+  MqttService::getInstance().publishJson("tap/pour", doc);
+}
+
+void handleFlowStatus(const char *id, int flowRate, int totalPulses)
+{
+  JsonDocument doc;
+  doc["id"] = id;
+  doc["f"] = flowRate;
+  doc["t"] = totalPulses;
+  MqttService::getInstance().publishJson("tap/flow", doc);
+}
+
 void setup()
 {
   Serial.begin(9600);
   initialize(button, valve, led, led_blue, led_green, led_red);
 
   // Initialize MQTT service and register message handler
-  mqttService.begin(mac, ip, broker, port, "client_id");
-  mqttService.onMessage(onMqttMessageReceived);
+  MqttService::getInstance().begin(mac, ip, broker, port, "client_id");
+  MqttService::getInstance().onMessage(onMqttMessageReceived);
 
-  // Initialize tap service
+  // Initialize tap service and register event handlers
   tapService.begin(INITIAL_TIMEOUT_MS, CONTINUE_TIMEOUT_MS, FLOW_UPDATE_INTERVAL_MS);
+  tapService.onPourDone(handlePourDone);
+  tapService.onFlowStatus(handleFlowStatus);
 
   // Temporary button to simulate RFID tag reading and publish a message
   button.onPress(handleButtonPress);

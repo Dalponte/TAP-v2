@@ -5,8 +5,9 @@
 // Initialize static member
 TapService *TapService::_instance = nullptr;
 
-TapService::TapService(Atm_led &valve, Atm_led &led, Atm_mqtt_client &mqtt)
-    : _valve(valve), _flowmeter(flowmeter), _led(led), _mqtt(mqtt)
+TapService::TapService(Atm_led &valve, Atm_led &led)
+    : _valve(valve), _flowmeter(flowmeter), _led(led),
+      _pourDoneCallback(nullptr), _flowStatusCallback(nullptr)
 {
     _instance = this;
 }
@@ -43,6 +44,16 @@ Atm_pour *TapService::getPourMachine()
     return &_pour;
 }
 
+void TapService::onPourDone(PourDoneCallback callback)
+{
+    _pourDoneCallback = callback;
+}
+
+void TapService::onFlowStatus(FlowStatusCallback callback)
+{
+    _flowStatusCallback = callback;
+}
+
 // Static callback handlers
 void TapService::handleFlow(int idx, int v, int up)
 {
@@ -67,14 +78,14 @@ void TapService::handlePourDone(int idx, int pulses, int remaining)
     {
         _instance->_flow_update_timer.stop();
 
-        JsonDocument doc;
-        doc["id"] = _instance->_pour.getCurrentId();
-        doc["p"] = pulses;
-        doc["r"] = remaining;
-
-        char json[128];
-        serializeJson(doc, json);
-        _instance->_mqtt.publish("tap/pour", json);
+        // Call the callback if it's registered
+        if (_instance->_pourDoneCallback)
+        {
+            _instance->_pourDoneCallback(
+                _instance->_pour.getCurrentId(),
+                pulses,
+                remaining);
+        }
 
         Serial.println();
         Serial.print("Pour completed! Pulses poured: ");
@@ -90,13 +101,13 @@ void TapService::handleFlowStatus(int idx, int v, int up)
 {
     if (_instance)
     {
-        JsonDocument doc;
-        doc["id"] = _instance->_pour.getCurrentId();
-        doc["f"] = up;
-        doc["t"] = v;
-
-        char json[64];
-        serializeJson(doc, json);
-        _instance->_mqtt.publish("tap/flow", json);
+        // Call the callback if it's registered
+        if (_instance->_flowStatusCallback)
+        {
+            _instance->_flowStatusCallback(
+                _instance->_pour.getCurrentId(),
+                up,
+                v);
+        }
     }
 }

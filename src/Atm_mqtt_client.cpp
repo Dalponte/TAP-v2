@@ -2,7 +2,7 @@
 
 Atm_mqtt_client *Atm_mqtt_client::_instance = nullptr;
 
-Atm_mqtt_client &Atm_mqtt_client::begin(uint8_t *mac, IPAddress ip, const char *broker, int port, const char *clientId)
+Atm_mqtt_client &Atm_mqtt_client::begin(MqttClient &mqttClient, const char *broker, int port, const char *clientId)
 {
     // Set the static instance pointer to this instance
     _instance = this;
@@ -16,8 +16,8 @@ Atm_mqtt_client &Atm_mqtt_client::begin(uint8_t *mac, IPAddress ip, const char *
     // clang-format on
     Machine::begin(state_table, ELSE);
 
-    Ethernet.begin(mac, ip);
-    delay(1000); // Allow Ethernet to initialize
+    // Store reference to the MqttClient instance
+    _mqttClient = &mqttClient;
 
     _broker = broker;
     _port = port;
@@ -32,9 +32,9 @@ Atm_mqtt_client &Atm_mqtt_client::publish(const char *topic, const char *payload
 {
     if (_isConnected)
     {
-        _mqttClient.beginMessage(topic);
-        _mqttClient.print(payload);
-        _mqttClient.endMessage();
+        _mqttClient->beginMessage(topic);
+        _mqttClient->print(payload);
+        _mqttClient->endMessage();
 
         // Push the message through the ON_SEND connector
         push(connectors, ON_SEND, 0, 0, 0);
@@ -51,11 +51,11 @@ static char persistentMessageBuffer[256];
 
 void Atm_mqtt_client::onMqttMessage(int messageSize)
 {
-    if (!_instance)
+    if (!_instance || !_instance->_mqttClient)
         return;
 
     Serial.print("Atm_mqtt_client: MQTT Message received. Topic: ");
-    Serial.print(_instance->_mqttClient.messageTopic());
+    Serial.print(_instance->_mqttClient->messageTopic());
     Serial.print(", Length: ");
     Serial.println(messageSize);
 
@@ -63,9 +63,9 @@ void Atm_mqtt_client::onMqttMessage(int messageSize)
     memset(persistentMessageBuffer, 0, sizeof(persistentMessageBuffer));
     size_t index = 0;
 
-    while (_instance->_mqttClient.available() && index < sizeof(persistentMessageBuffer) - 1)
+    while (_instance->_mqttClient->available() && index < sizeof(persistentMessageBuffer) - 1)
     {
-        persistentMessageBuffer[index++] = (char)_instance->_mqttClient.read();
+        persistentMessageBuffer[index++] = (char)_instance->_mqttClient->read();
     }
     persistentMessageBuffer[index] = '\0';
 
@@ -89,7 +89,7 @@ int Atm_mqtt_client::event(int id)
     switch (id)
     {
     case EVT_CONNECT:
-        return !_isConnected && _mqttClient.connect(_broker, _port);
+        return !_isConnected && _mqttClient->connect(_broker, _port);
     }
     return 0;
 }
@@ -102,19 +102,19 @@ void Atm_mqtt_client::action(int id)
         Serial.println("MQTT Connected");
         _isConnected = true;
 
-        _mqttClient.onMessage(onMqttMessage);
-        _mqttClient.subscribe("tap/in");
+        _mqttClient->onMessage(onMqttMessage);
+        _mqttClient->subscribe("tap/in");
         return;
 
     case LP_CONNECTED:
         // Keep the connection alive
-        _mqttClient.poll();
+        _mqttClient->poll();
 
         // Check connection every 5 seconds
         if (millis() - _lastConnectionCheck >= 5000)
         {
             _lastConnectionCheck = millis();
-            if (!_mqttClient.connected())
+            if (!_mqttClient->connected())
             {
                 trigger(EVT_DISCONNECT);
                 trigger(EVT_CONNECT);
@@ -125,8 +125,8 @@ void Atm_mqtt_client::action(int id)
     case ENT_DISCONNECTED:
         Serial.println("MQTT Disconnected");
         _isConnected = false;
-        _mqttClient.stop();
-        _mqttClient.unsubscribe("tap/in");
+        _mqttClient->stop();
+        _mqttClient->unsubscribe("tap/in");
         return;
     }
 }

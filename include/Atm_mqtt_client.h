@@ -23,7 +23,7 @@ public:
   Atm_mqtt_client(void) : Machine() {};
 
   // Methods
-  Atm_mqtt_client &begin(uint8_t *mac, IPAddress ip, const char *broker, int port, const char *clientId);
+  Atm_mqtt_client &begin(MqttClient &mqttClient, const char *broker, int port, const char *clientId);
   Atm_mqtt_client &connect();
   Atm_mqtt_client &disconnect();
   Atm_mqtt_client &onReceive(Machine &machine, int event);
@@ -60,8 +60,7 @@ private:
   void action(int id);
 
   // Data members
-  EthernetClient _ethClient;
-  MqttClient _mqttClient{_ethClient};
+  MqttClient *_mqttClient; // Pointer instead of object
   const char *_broker;
   int _port;
   const char *_clientId;

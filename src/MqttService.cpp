@@ -3,16 +3,20 @@
 // Initialize static instance pointer
 MqttService *MqttService::_instance = nullptr;
 
-MqttService::MqttService(Atm_mqtt_client &mqtt)
-    : _mqtt(mqtt), _messageCallback(nullptr)
+MqttService::MqttService()
+    : _messageCallback(nullptr)
 {
-    _instance = this;
+    // Instance is set in getInstance()
 }
 
 void MqttService::begin(uint8_t *mac, IPAddress ip, const char *broker, int port, const char *clientId)
 {
-    // Setup communication
-    _mqtt.begin(mac, ip, broker, port, clientId)
+    // Setup Ethernet connection
+    Ethernet.begin(mac, ip);
+    delay(1000); // Allow Ethernet to initialize
+
+    // Setup MQTT client
+    _mqtt.begin(_mqttClient, broker, port, clientId)
         .connect()
         .onReceive(handleMqttMessage)
         .trace(Serial);
