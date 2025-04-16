@@ -47,22 +47,18 @@ private:
         int continue_timeout_ms,
         int flow_update_interval);
 
-    // No copy or assignment
     TapService(const TapService &) = delete;
     TapService &operator=(const TapService &) = delete;
 
-    // State machines
     Atm_digital flowmeter;
     Atm_timer _flow_update_timer;
     Atm_pour _pour;
     Atm_led _valve_led; // Internal valve LED control
 
-    // Callbacks for publishing events
     PourDoneCallback _pourDoneCallback;
     FlowStatusCallback _flowStatusCallback;
     PourStartedCallback _pourStartedCallback;
 
-    // Static callback handlers
     static void handleFlowUpdateTimer(int idx, int v, int up);
     static void handleFlow(int idx, int v, int up);
     static void handlePourDone(int idx, int pulses, int remaining);

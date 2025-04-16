@@ -22,7 +22,6 @@ public:
 
   Atm_mqtt_client(void) : Machine() {};
 
-  // Methods
   Atm_mqtt_client &begin(MqttClient &mqttClient, const char *broker, int port, const char *clientId);
   Atm_mqtt_client &connect();
   Atm_mqtt_client &disconnect();

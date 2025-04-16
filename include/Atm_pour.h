@@ -44,19 +44,14 @@ public:
     Atm_pour &begin(int initial_timeout_ms = 10000, int continue_timeout_ms = 3000);
     Atm_pour &trace(Stream &stream);
     Atm_pour &flow();
-    Atm_pour &start(int pulses, const char *id = ""); // Modified to accept an ID
+    Atm_pour &start(int pulses, const char *id = "");
     Atm_pour &updateFlow();
-    const char *getCurrentId(); // New method to get current ID
+    const char *getCurrentId();
 
-    // Pour done event connector methods
     Atm_pour &onPourDone(Machine &machine, int event);
     Atm_pour &onPourDone(atm_cb_push_t callback, int idx = 0);
-
-    // Renamed connector methods for flow status updates
     Atm_pour &onFlowStatus(Machine &machine, int event);
     Atm_pour &onFlowStatus(atm_cb_push_t callback, int idx = 0);
-
-    // Pour start event connector methods
     Atm_pour &onPourStart(Machine &machine, int event);
     Atm_pour &onPourStart(atm_cb_push_t callback, int idx = 0);
 

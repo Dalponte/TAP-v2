@@ -5,7 +5,6 @@ LedService *LedService::instance = nullptr;
 
 LedService::LedService()
 {
-    // Initialize all LEDs
     led.begin(PIN_LED);
     led_blue.begin(PIN_BLUE);
     led_green.begin(PIN_GREEN);
@@ -20,8 +19,6 @@ LedService &LedService::getInstance()
     }
     return *instance;
 }
-
-// Remove initialize() method
 
 void LedService::setGreen(bool state)
 {

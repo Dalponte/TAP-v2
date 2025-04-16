@@ -5,21 +5,20 @@
 #include "TapService.h"
 #include "MqttService.h"
 #include "LedService.h"
+#include "Controller.h"
+
+#define BUTTON_PIN 23
+Atm_button button;
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ip(192, 168, 4, 100);
+const char broker[] = "192.168.4.2"; // MQTT broker address
+int port = 1883;                     // MQTT broker port
 
-#define BUTTON_PIN 23 // Button to trigger the pour
-
-Atm_button button;
-
-// Use singleton instances for services
 TapService &tapService = TapService::getInstance(5000, 1000);
 MqttService &mqttService = MqttService::getInstance();
 LedService &ledService = LedService::getInstance();
-
-const char broker[] = "192.168.4.2"; // MQTT broker address
-int port = 1883;                     // MQTT broker port
+Controller &controller = Controller::getInstance(mqttService, tapService, ledService);
 
 void handleButtonPress(int idx, int v, int up)
 {
@@ -28,66 +27,15 @@ void handleButtonPress(int idx, int v, int up)
   tapService.startPour(10, "mqtt-test");
 }
 
-void onMqttMessageReceived(const char *topic, const char *message)
-{
-  PourRequest request = MqttService::parsePourRequest(message);
-
-  if (request.isValid)
-  {
-    Serial.print("ID: ");
-    Serial.print(request.id);
-    Serial.print(", Remaining: ");
-    Serial.println(request.pulses);
-
-    tapService.startPour(request.pulses, request.id);
-  }
-  else
-  {
-    Serial.println(request.errorMessage);
-    ledService.red();
-  }
-}
-
-void handlePourStart(const char *message)
-{
-  Serial.println(message);
-  tapService.startPour(50, "mqtt-test");
-  ledService.blue();
-}
-
-void onPourStarted(const char *id, int pulses)
-{
-  Serial.print("Pour started - ID: ");
-  Serial.print(id);
-  Serial.print(" Pulses: ");
-  Serial.println(pulses);
-  ledService.blue();
-}
-
-void handlePourDone(const char *id, int pulses, int remaining)
-{
-  mqttService.publish("tap/pour", "Pour done!");
-  ledService.green();
-}
-
-void handleFlowStatus(const char *id, int flowRate, int totalPulses)
-{
-  mqttService.publish("tap/flow", "Flow status!");
-}
-
 void setup()
 {
   Serial.begin(9600);
 
-  button.begin(BUTTON_PIN);
-
   mqttService.begin(mac, ip, broker, port, "client_id");
-  mqttService.onMessage(onMqttMessageReceived);
-  mqttService.onPourStart(handlePourStart);
 
-  tapService.onPourDone(handlePourDone);
-  tapService.onFlowStatus(handleFlowStatus);
-  tapService.onPourStarted(onPourStarted);
+  Controller::setup();
+
+  button.begin(BUTTON_PIN); // Temporary button to simulate pour requests
   button.onPress(handleButtonPress);
 }
 

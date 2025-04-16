@@ -45,14 +45,11 @@ public:
     static void onConnected(int idx, int v, int up);
     static void onDisconnected(int idx, int v, int up);
 
-    // Process a received message
-    void processMessage();
-
     // Get current message content
     const char *getMessageTopic() const;
     const char *getMessageContent() const;
 
-    // Static method to parse pour request JSON
+    void processMessage();
     static PourRequest parsePourRequest(const char *message);
 
     Atm_mqtt_client _mqtt;
@@ -61,14 +58,13 @@ private:
     // Private constructor for singleton
     MqttService();
 
-    // No copy or assignment
     MqttService(const MqttService &) = delete;
     MqttService &operator=(const MqttService &) = delete;
 
     EthernetClient _ethClient;
     MqttClient _mqttClient{_ethClient};
     MessageCallback _messageCallback;
-    PourStartCallback _pourStartCallback; // New callback for pour start events
+    PourStartCallback _pourStartCallback;
 
     // Buffer for message storage
     char _messageBuffer[256];
