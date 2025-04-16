@@ -50,7 +50,6 @@ void Controller::handleMqttMessage(const char *topic, const char *message)
 
 void Controller::handlePourStart(const char *message)
 {
-    Serial.println(message);
     tapService->startPour(50, "mqtt-test");
     if (ledService)
         ledService->blue();
@@ -70,10 +69,6 @@ void Controller::handleFlowStatus(const char *id, int flowRate, int totalPulses)
 
 void Controller::handlePourStarted(const char *id, int pulses)
 {
-    Serial.print("Pour started - ID: ");
-    Serial.print(id);
-    Serial.print(" Pulses: ");
-    Serial.println(pulses);
     if (ledService)
         ledService->blue();
 }

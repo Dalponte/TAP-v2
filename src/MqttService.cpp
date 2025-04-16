@@ -23,14 +23,12 @@ void MqttService::begin(uint8_t *mac, IPAddress ip, const char *broker, int port
 
 void MqttService::onConnected(int idx, int v, int up)
 {
-    Serial.println("MqttService: MQTT client connected");
     _instance->_mqttClient.onMessage(handleMqttMessage);
     _instance->_mqttClient.subscribe("tap/in");
 }
 
 void MqttService::onDisconnected(int idx, int v, int up)
 {
-    Serial.println("MqttService: MQTT client disconnected");
 }
 
 void MqttService::publish(const char *topic, const char *payload)
