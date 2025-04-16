@@ -1,7 +1,7 @@
 #include "Atm_pour.h"
 #include <Automaton.h>
 
-extern Atm_led valve; // Temporary global variable for valve control
+/* Remove extern LED reference since we'll use LedService */
 
 Atm_pour &Atm_pour::begin(int initial_timeout_ms, int continue_timeout_ms)
 {
@@ -53,6 +53,18 @@ Atm_pour &Atm_pour::onFlowStatus(atm_cb_push_t callback, int idx)
     return *this;
 }
 
+Atm_pour &Atm_pour::onPourStart(Machine &machine, int event)
+{
+    onPush(connectors, ON_POUR_START, 0, 0, 0, machine, event);
+    return *this;
+}
+
+Atm_pour &Atm_pour::onPourStart(atm_cb_push_t callback, int idx)
+{
+    onPush(connectors, ON_POUR_START, 0, 0, 0, callback, idx);
+    return *this;
+}
+
 Atm_pour &Atm_pour::start(int pulses, const char *id)
 {
     pour_pulses = pulses;
@@ -88,13 +100,12 @@ void Atm_pour::action(int id)
     switch (id)
     {
     case ENT_IDLE:
-        Serial.println("Atm_pour: Valve closed");
-        valve.trigger(valve.EVT_OFF); // Close valve
+        Serial.println("Atm_pour: Entering IDLE state");
         return;
     case ENT_POURING:
-        Serial.println("Atm_pour: Valve opened");
-        valve.trigger(valve.EVT_ON); // Open valve
+        Serial.println("Atm_pour: Starting pour");
         timer.set(initial_timeout);
+        push(connectors, ON_POUR_START, 0, pour_pulses, 0); // Notify pour start
 
         // Make sure the remaining counter is properly set
         if (remaining.value < 1)

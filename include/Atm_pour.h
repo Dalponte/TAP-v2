@@ -36,6 +36,7 @@ public:
     {
         ON_POUR_DONE,
         ON_FLOW_STATUS,
+        ON_POUR_START,
         CONN_MAX
     };
     atm_connector connectors[CONN_MAX];
@@ -54,6 +55,10 @@ public:
     // Renamed connector methods for flow status updates
     Atm_pour &onFlowStatus(Machine &machine, int event);
     Atm_pour &onFlowStatus(atm_cb_push_t callback, int idx = 0);
+
+    // Pour start event connector methods
+    Atm_pour &onPourStart(Machine &machine, int event);
+    Atm_pour &onPourStart(atm_cb_push_t callback, int idx = 0);
 
     int event(int id);
     void action(int id);
