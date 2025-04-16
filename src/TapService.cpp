@@ -3,15 +3,13 @@
 // Initialize static member
 TapService *TapService::_instance = nullptr;
 
-TapService::TapService()
-    : _pourDoneCallback(nullptr), _flowStatusCallback(nullptr), _pourStartedCallback(nullptr)
-{
-}
-
-void TapService::begin(
+TapService::TapService(
     int initial_timeout_ms,
     int continue_timeout_ms,
     int flow_update_interval)
+    : _pourDoneCallback(nullptr),
+      _flowStatusCallback(nullptr),
+      _pourStartedCallback(nullptr)
 {
     // Initialize valve LED
     _valve_led.begin(VALVE_PIN);

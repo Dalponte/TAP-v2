@@ -13,19 +13,17 @@
 class TapService
 {
 public:
-    static TapService &getInstance()
+    static TapService &getInstance(
+        int initial_timeout_ms = INITIAL_TIMEOUT_MS,
+        int continue_timeout_ms = CONTINUE_TIMEOUT_MS,
+        int flow_update_interval = FLOW_UPDATE_INTERVAL_MS)
     {
         if (!_instance)
         {
-            _instance = new TapService();
+            _instance = new TapService(initial_timeout_ms, continue_timeout_ms, flow_update_interval);
         }
         return *_instance;
     }
-
-    void begin(
-        int initial_timeout_ms,
-        int continue_timeout_ms,
-        int flow_update_interval);
 
     // Start a pour operation
     void startPour(int pulses, const char *id);
@@ -44,8 +42,10 @@ public:
     void onPourStarted(PourStartedCallback callback);
 
 private:
-    // Private constructor for singleton
-    TapService();
+    TapService(
+        int initial_timeout_ms,
+        int continue_timeout_ms,
+        int flow_update_interval);
 
     // No copy or assignment
     TapService(const TapService &) = delete;

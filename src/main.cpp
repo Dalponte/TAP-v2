@@ -14,7 +14,7 @@ IPAddress ip(192, 168, 4, 100);
 Atm_button button;
 
 // Use singleton instances for services
-TapService &tapService = TapService::getInstance();
+TapService &tapService = TapService::getInstance(5000, 1000);
 MqttService &mqttService = MqttService::getInstance();
 LedService &ledService = LedService::getInstance();
 
@@ -80,9 +80,6 @@ void setup()
   Serial.begin(9600);
 
   button.begin(BUTTON_PIN);
-
-  // Initialize TapService with timing parameters
-  tapService.begin(INITIAL_TIMEOUT_MS, CONTINUE_TIMEOUT_MS, FLOW_UPDATE_INTERVAL_MS);
 
   mqttService.begin(mac, ip, broker, port, "client_id");
   mqttService.onMessage(onMqttMessageReceived);
