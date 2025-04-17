@@ -3,7 +3,6 @@
 #include "Atm_pour.h"
 #include "Atm_mqtt_client.h"
 #include "TapService.h"
-#include "MqttService.h"
 #include "LedService.h"
 #include "Controller.h"
 
@@ -15,14 +14,19 @@ IPAddress ip(192, 168, 4, 100);
 const char broker[] = "192.168.4.2"; // MQTT broker address
 int port = 1883;                     // MQTT broker port
 
+// Hardcoded tap configuration
+const TapConfig tapConfig = {
+    .tapId = 1, // Integer ID for the tap
+    .tapName = "01"};
+
 TapService &tapService = TapService::getInstance(5000, 1000);
-MqttService &mqttService = MqttService::getInstance();
 LedService &ledService = LedService::getInstance();
-Controller &controller = Controller::getInstance(mqttService, tapService, ledService);
+// Initialize the controller singleton with LED service and config
+Controller &controller = Controller::initInstance(ledService, tapConfig);
 
 void handleButtonPress(int idx, int v, int up)
 {
-  mqttService.publish("tap/out", "Button pressed!");
+  controller.publish("tap/out", "Button pressed!");
   ledService.red();
   tapService.startPour(10, "mqtt-test");
 }
@@ -31,7 +35,8 @@ void setup()
 {
   Serial.begin(9600);
 
-  mqttService.begin(mac, ip, broker, port, "client_id");
+  // Initialize MQTT directly in the Controller
+  controller.begin(mac, ip, broker, port, "client_id");
 
   Controller::setup();
 

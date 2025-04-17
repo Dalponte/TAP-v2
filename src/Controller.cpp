@@ -1,107 +1,270 @@
 #include "Controller.h"
 #include <Arduino.h>
 #include "Atm_tap.h"
+#include "MessageUtils.h"
 
-MqttService *Controller::mqttService = nullptr;
-TapService *Controller::tapService = nullptr;
 LedService *Controller::ledService = nullptr;
+Controller *Controller::_instance = nullptr;
 
-Controller &Controller::getInstance(MqttService &mqtt, TapService &tap, LedService &led)
+Controller &Controller::initInstance(LedService &led, const TapConfig &config)
 {
-    static Controller instance(mqtt, tap, led);
-    return instance;
+    if (_instance == nullptr)
+    {
+        _instance = new Controller(led, config);
+    }
+    return *_instance;
 }
 
-Controller::Controller(MqttService &mqtt, TapService &tap, LedService &led)
+Controller &Controller::getInstance()
 {
-    mqttService = &mqtt;
-    tapService = &tap;
+    if (_instance == nullptr)
+    {
+        Serial.println("ERROR: Controller not initialized. Call initInstance first.");
+        // In a production environment, you might want to handle this differently
+        while (true)
+        {
+            // Halt to prevent further execution with uninitialized controller
+            delay(1000);
+        }
+    }
+    return *_instance;
+}
+
+Controller::Controller(LedService &led, const TapConfig &config)
+    : _config(config)
+{
     ledService = &led;
-    _tap.begin().trace(Serial).onStateChange(Controller::publishTapStateChanged); // Register handler
+
+    // Initialize and configure the tap state machine
+    _tap.begin()
+        .trace(Serial)
+        .onStateChange(Controller::publishTapStateChanged)
+        .onInitializing(Controller::onTapInitializing)
+        .onReady(Controller::onTapReady)
+        .onPouring(Controller::onTapPouring)
+        .onDone(Controller::onTapDone)
+        .onDisconnected(Controller::onTapDisconnected);
+
+    // Initialize message buffer
+    memset(_messageBuffer, 0, sizeof(_messageBuffer));
+
+    Serial.print("Controller initialized with tap ID: ");
+    Serial.print(_config.tapId);
+    Serial.print(", name: ");
+    Serial.println(_config.tapName);
+}
+
+void Controller::begin(uint8_t *mac, IPAddress ip, const char *broker, int port, const char *clientId)
+{
+    Ethernet.begin(mac, ip);
+    delay(1500); // Allow Ethernet to initialize
+
+    _mqtt.begin(_mqttClient, broker, port, clientId)
+        .onConnected(onConnected)
+        .onDisconnected(onDisconnected)
+        .trace(Serial)
+        .connect();
 }
 
 void Controller::setup()
 {
-    mqttService->onMessage(Controller::handleMqttMessage);
-    mqttService->onPourStart(Controller::handlePourStart);
-    tapService->onPourDone(Controller::handlePourDone);
-    tapService->onFlowStatus(Controller::handleFlowStatus);
-    tapService->onPourStarted(Controller::handlePourStarted);
+    // Nothing to do here since we're handling everything internally now
 }
 
-void Controller::handleMqttMessage(const char *topic, const char *message)
+void Controller::onConnected(int idx, int v, int up)
 {
-    PourRequest request = MqttService::parsePourRequest(message);
-
-    if (request.isValid)
+    if (_instance)
     {
-        Serial.print("ID: ");
-        Serial.print(request.id);
-        Serial.print(", Remaining: ");
-        Serial.println(request.pulses);
+        _instance->_mqttClient.onMessage(handleMqttMessage);
+        _instance->_mqttClient.subscribe("tap/in");
+        Serial.println("MQTT Connected");
 
-        tapService->startPour(request.pulses, request.id);
+        // Trigger the EVT_CONNECTED event to transition to READY state
+        _instance->_tap.trigger(Atm_tap::EVT_CONNECTED);
     }
-    else
+}
+
+void Controller::onDisconnected(int idx, int v, int up)
+{
+    Serial.println("MQTT Disconnected");
+
+    if (_instance)
     {
-        Serial.println(request.errorMessage);
+        // Trigger the EVT_DISCONNECT event to transition to DISCONNECTED state
+        _instance->_tap.trigger(Atm_tap::EVT_DISCONNECT);
+    }
+}
+
+void Controller::publish(const char *topic, const char *payload)
+{
+    _mqtt.publish(topic, payload);
+}
+
+bool Controller::parseBinaryMessage(const uint8_t *buffer, size_t length, BinaryMessage &message)
+{
+    // Delegate to the MessageUtils class
+    MessageErrorCode result = MessageUtils::parseBinaryMessage(buffer, length, message);
+    return result == MSG_SUCCESS;
+}
+
+// Helper method for error handling
+void Controller::handleError(const char *errorMessage)
+{
+    if (errorMessage)
+    {
+        Serial.print("ERROR: ");
+        Serial.println(errorMessage);
+    }
+}
+
+void Controller::processBinaryMessage(const BinaryMessage &message)
+{
+    if (!_instance)
+    {
+        handleError("Controller instance is null");
+        return;
+    }
+
+    // Debug output
+    Serial.print("Protocol version: ");
+    Serial.println(message.protocolVersion);
+    Serial.print("Tap ID: ");
+    Serial.println(message.tapId);
+    Serial.print("Command: ");
+    Serial.println(message.commandType);
+    Serial.print("Param1: ");
+    Serial.println(message.param1);
+    Serial.print("Param2: ");
+    Serial.println(message.param2);
+    Serial.print("Param3: ");
+    Serial.println(message.param3);
+
+    // Validate message for this tap ID
+    MessageErrorCode validationResult = MessageUtils::validateMessage(message, _instance->_config.tapId);
+
+    if (validationResult != MSG_SUCCESS)
+    {
+        Serial.println(MessageUtils::getErrorDescription(validationResult));
+        return;
+    }
+
+    Serial.print("Binary message received for this tap (ID: ");
+    Serial.print(_instance->_config.tapId);
+    Serial.println(")");
+
+    // Handle different commands without try-catch
+    switch (message.commandType)
+    {
+    case CMD_POUR:
+        // Trigger pour event on the state machine
+        _instance->_tap.trigger(Atm_tap::EVT_POUR);
+
         if (ledService)
-            ledService->red();
+        {
+            ledService->blue();
+        }
+        break;
+
+    case CMD_STOP:
+        // Trigger stop command if needed
+        Serial.println("Stop command received");
+        // Future implementation: _instance->_tap.trigger(Atm_tap::EVT_STOP);
+        break;
+
+    case CMD_STATUS:
+        Serial.println("Status request received");
+        // Just publish current state
+        publishTapStateChanged(0, _instance->_tap.state(), 0);
+        break;
+
+    default:
+        handleError("Unknown command type");
+        Serial.print("Command type: ");
+        Serial.println(message.commandType);
+        break;
     }
 }
 
-void Controller::handlePourStart(const char *message)
+void Controller::handleMqttMessage(int messageSize)
 {
-    tapService->startPour(50, "mqtt-test");
-    if (ledService)
-        ledService->blue();
-}
+    if (!_instance)
+        return;
 
-void Controller::handlePourDone(const char *id, int pulses, int remaining)
-{
-    mqttService->publish("tap/pour", "Pour done!");
-    if (ledService)
-        ledService->green();
-}
+    // Get topic
+    String topicStr = _instance->_mqttClient.messageTopic();
 
-void Controller::handleFlowStatus(const char *id, int flowRate, int totalPulses)
-{
-    mqttService->publish("tap/flow", "Flow status!");
-}
+    // Clear previous message
+    memset(_instance->_messageBuffer, 0, sizeof(_instance->_messageBuffer));
 
-void Controller::handlePourStarted(const char *id, int pulses)
-{
-    if (ledService)
-        ledService->blue();
+    // Read the message into our buffer
+    size_t index = 0;
+    while (_instance->_mqttClient.available() && index < sizeof(_instance->_messageBuffer))
+    {
+        _instance->_messageBuffer[index++] = (char)_instance->_mqttClient.read();
+    }
+
+    // Print basic message info
+    Serial.print("MQTT Message - Topic: ");
+    Serial.print(topicStr);
+    Serial.print(", Size: ");
+    Serial.println(index);
+
+    // Check if this is a pour request message
+    if (topicStr == "tap/in")
+    {
+        // Parse as binary message
+        BinaryMessage binMsg;
+        if (parseBinaryMessage(_instance->_messageBuffer, index, binMsg))
+        {
+            // Successfully parsed binary message
+            Serial.println("Received binary message");
+            processBinaryMessage(binMsg);
+        }
+        else
+        {
+            Serial.println("Failed to parse binary message");
+        }
+    }
 }
 
 void Controller::publishTapStateChanged(int idx, int state, int up)
 {
-    if (!mqttService)
+    if (!_instance)
         return;
-    const char *stateStr = nullptr;
-    switch (state)
-    {
-    case Atm_tap::INITIALIZING:
-        stateStr = "INITIALIZING";
-        break;
-    case Atm_tap::READY:
-        stateStr = "READY";
-        break;
-    case Atm_tap::POURING:
-        stateStr = "POURING";
-        break;
-    case Atm_tap::DONE:
-        stateStr = "DONE";
-        break;
-    case Atm_tap::DISCONNECTED:
-        stateStr = "DISCONNECTED";
-        break;
-    default:
-        stateStr = "UNKNOWN";
-        break;
-    }
+
+    const char *stateStr = MessageUtils::stateToString(state);
+
+    // Format simple status message as text
     char msg[64];
-    snprintf(msg, sizeof(msg), "{\"state\":\"%s\"}", stateStr);
-    mqttService->publish("tap/state", msg);
+    snprintf(msg, sizeof(msg), "{\"state\":\"%s\",\"id\":%d,\"name\":\"%s\"}",
+             stateStr,
+             _instance->_config.tapId,
+             _instance->_config.tapName);
+
+    _instance->publish("tap/state", msg);
+}
+
+void Controller::onTapInitializing(int idx, int v, int up)
+{
+    Serial.println("Tap state: INITIALIZING");
+}
+
+void Controller::onTapReady(int idx, int v, int up)
+{
+    Serial.println("Tap state: READY");
+}
+
+void Controller::onTapPouring(int idx, int v, int up)
+{
+    Serial.println("Tap state: POURING");
+}
+
+void Controller::onTapDone(int idx, int v, int up)
+{
+    Serial.println("Tap state: DONE");
+}
+
+void Controller::onTapDisconnected(int idx, int v, int up)
+{
+    Serial.println("Tap state: DISCONNECTED");
 }

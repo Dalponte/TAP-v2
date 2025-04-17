@@ -1,39 +1,109 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-#include "MqttService.h"
-#include "TapService.h"
+#include <Arduino.h>
+#include <SPI.h>
+#include <Ethernet.h>
+#include <ArduinoMqttClient.h>
+#include "Atm_mqtt_client.h"
 #include "LedService.h"
 #include "Atm_tap.h"
+
+// Structure for tap configuration
+struct TapConfig
+{
+    uint16_t tapId;
+    const char *tapName;
+};
+
+// Binary protocol message format
+struct BinaryMessage
+{
+    uint8_t protocolVersion; // Version of the protocol (for future compatibility)
+    uint16_t tapId;          // ID of the tap (integer value)
+    uint8_t commandType;     // Command type (1=pour, 2=stop, etc.)
+    uint16_t param1;         // Parameter 1 (e.g., pulses for pour)
+    uint16_t param2;         // Parameter 2 (reserved for future use)
+    uint16_t param3;         // Parameter 3 (reserved for future use)
+};
+
+// Command types
+enum CommandType
+{
+    CMD_POUR = 1,
+    CMD_STOP = 2,
+    CMD_STATUS = 3
+};
 
 class Controller
 {
 public:
-    static Controller &getInstance(MqttService &mqtt, TapService &tap, LedService &led);
+    // Get the existing instance (singleton)
+    static Controller &getInstance();
 
+    // Initialize with required parameters
+    static Controller &initInstance(LedService &led, const TapConfig &config);
+
+    // Initialize MQTT connection
+    void begin(uint8_t *mac, IPAddress ip, const char *broker, int port, const char *clientId = "client_id");
+
+    // MQTT publish functionality
+    void publish(const char *topic, const char *payload);
+
+    // Setup method for initial configuration
     static void setup();
 
-    static void handleMqttMessage(const char *topic, const char *message);
-    static void handlePourStart(const char *message);
-    static void handlePourDone(const char *id, int pulses, int remaining);
-    static void handleFlowStatus(const char *id, int flowRate, int totalPulses);
-    static void handlePourStarted(const char *id, int pulses);
+    // MQTT message handling
+    static void handleMqttMessage(int messageSize);
+
+    // Process binary message
+    static void processBinaryMessage(const BinaryMessage &message);
+
+    // Error handling method
+    static void handleError(const char *errorMessage);
+
+    // Parse binary message
+    static bool parseBinaryMessage(const uint8_t *buffer, size_t length, BinaryMessage &message);
+
+    // Connection event callbacks
+    static void onConnected(int idx, int v, int up);
+    static void onDisconnected(int idx, int v, int up);
 
     // Add the state change publish handler
     static void publishTapStateChanged(int idx, int state, int up);
 
+    // Tap state callback handlers
+    static void onTapInitializing(int idx, int v, int up);
+    static void onTapReady(int idx, int v, int up);
+    static void onTapPouring(int idx, int v, int up);
+    static void onTapDone(int idx, int v, int up);
+    static void onTapDisconnected(int idx, int v, int up);
+
+    // Public attribute for tap machine
     Atm_tap _tap;
 
 private:
-    Controller(MqttService &mqtt, TapService &tap, LedService &led);
+    // Private constructor for singleton
+    Controller(LedService &led, const TapConfig &config);
 
     // No copy or assignment
     Controller(const Controller &) = delete;
     Controller &operator=(const Controller &) = delete;
 
-    static MqttService *mqttService;
-    static TapService *tapService;
+    // Configuration
+    TapConfig _config;
+
+    // MQTT components
+    EthernetClient _ethClient;
+    MqttClient _mqttClient{_ethClient};
+    Atm_mqtt_client _mqtt;
+
+    // Buffer for message storage
+    uint8_t _messageBuffer[256];
+
+    // Static references
     static LedService *ledService;
+    static Controller *_instance;
 };
 
 #endif // CONTROLLER_H
