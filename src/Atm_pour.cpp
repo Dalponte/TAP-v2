@@ -14,6 +14,7 @@ Atm_pour &Atm_pour::begin(int initial_timeout_ms, int continue_timeout_ms)
     // clang-format on
 
     Machine::begin(state_table, ELSE);
+    state(IDLE);
 
     initial_timeout = initial_timeout_ms;
     continue_timeout = continue_timeout_ms;

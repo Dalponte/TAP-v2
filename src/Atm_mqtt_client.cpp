@@ -21,6 +21,7 @@ Atm_mqtt_client &Atm_mqtt_client::begin(MqttClient &mqttClient, const char *brok
     _isConnected = false;
     _lastConnectionCheck = millis();
 
+    state(DISCONNECTED);
     return *this;
 }
 

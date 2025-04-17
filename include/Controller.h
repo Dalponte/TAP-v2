@@ -4,6 +4,7 @@
 #include "MqttService.h"
 #include "TapService.h"
 #include "LedService.h"
+#include "Atm_tap.h"
 
 class Controller
 {
@@ -17,6 +18,11 @@ public:
     static void handlePourDone(const char *id, int pulses, int remaining);
     static void handleFlowStatus(const char *id, int flowRate, int totalPulses);
     static void handlePourStarted(const char *id, int pulses);
+
+    // Add the state change publish handler
+    static void publishTapStateChanged(int idx, int state, int up);
+
+    Atm_tap _tap;
 
 private:
     Controller(MqttService &mqtt, TapService &tap, LedService &led);

@@ -1,5 +1,6 @@
 #include "Controller.h"
 #include <Arduino.h>
+#include "Atm_tap.h"
 
 MqttService *Controller::mqttService = nullptr;
 TapService *Controller::tapService = nullptr;
@@ -16,6 +17,7 @@ Controller::Controller(MqttService &mqtt, TapService &tap, LedService &led)
     mqttService = &mqtt;
     tapService = &tap;
     ledService = &led;
+    _tap.begin().trace(Serial).onStateChange(Controller::publishTapStateChanged); // Register handler
 }
 
 void Controller::setup()
@@ -71,4 +73,35 @@ void Controller::handlePourStarted(const char *id, int pulses)
 {
     if (ledService)
         ledService->blue();
+}
+
+void Controller::publishTapStateChanged(int idx, int state, int up)
+{
+    if (!mqttService)
+        return;
+    const char *stateStr = nullptr;
+    switch (state)
+    {
+    case Atm_tap::INITIALIZING:
+        stateStr = "INITIALIZING";
+        break;
+    case Atm_tap::READY:
+        stateStr = "READY";
+        break;
+    case Atm_tap::POURING:
+        stateStr = "POURING";
+        break;
+    case Atm_tap::DONE:
+        stateStr = "DONE";
+        break;
+    case Atm_tap::DISCONNECTED:
+        stateStr = "DISCONNECTED";
+        break;
+    default:
+        stateStr = "UNKNOWN";
+        break;
+    }
+    char msg[64];
+    snprintf(msg, sizeof(msg), "{\"state\":\"%s\"}", stateStr);
+    mqttService->publish("tap/state", msg);
 }
