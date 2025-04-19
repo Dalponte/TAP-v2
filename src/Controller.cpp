@@ -203,9 +203,12 @@ void Controller::onTapPouring(int idx, int v, int up)
     ledService->green();
 }
 
-void Controller::onTapDone(int idx, int v, int up)
+void Controller::onTapDone(int idx, int poured, int remaining)
 {
     ledService->red();
+    char msg[64];
+    snprintf(msg, sizeof(msg), "{\"data\":[%d,%d,%d]}", _instance->_config.tapId, poured, remaining);
+    _instance->publish("tap/done", msg);
 }
 
 void Controller::onTapDisconnected(int idx, int v, int up)
@@ -239,8 +242,10 @@ void Controller::processJsonCommand(const JsonCommand &command)
     switch (command.commandType)
     {
     case CMD_POUR:
-        _instance->_tap.trigger(Atm_tap::EVT_POUR);
+        _instance->_tap.start(command.pulses, command.tapId);
         break;
+    case CMD_CONTINUE:
+        _instance->_tap.trigger(Atm_tap::EVT_READY);
 
     default:
         handleError(MessageUtils::getErrorDescription(MSG_UNKNOWN_COMMAND));

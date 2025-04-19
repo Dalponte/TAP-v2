@@ -29,8 +29,7 @@ struct JsonCommand
 enum CommandType
 {
     CMD_POUR = 1,
-    CMD_STOP = 2,
-    CMD_STATUS = 3
+    CMD_CONTINUE = 2,
 };
 
 class Controller

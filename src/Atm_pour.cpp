@@ -3,6 +3,9 @@
 
 Atm_pour &Atm_pour::begin(int initial_timeout_ms, int continue_timeout_ms)
 {
+    // Add deprecation warning
+    Serial.println("WARNING: Atm_pour is deprecated and will be removed in future versions. Please use Atm_tap instead.");
+
     // clang-format off
     const static state_t state_table[] PROGMEM = {
     /*           ON_ENTER    ON_LOOP  ON_EXIT     EVT_TIMER  EVT_START  EVT_STOP  ELSE */

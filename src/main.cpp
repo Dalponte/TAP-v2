@@ -24,9 +24,11 @@ Controller &controller = Controller::initInstance(ledService, tapConfig);
 
 void handleButtonPress(int idx, int v, int up)
 {
-  controller.publish("tap/input", "Button pressed!");
+  char payload[64];
+  snprintf(payload, sizeof(payload), "{\"data\":[%d, \"%s\"]}", tapConfig.tapId, "tag-id");
+  controller.publish("tap/input", payload);
   // ledService.red();
-  // tapService.startPour(10, "mqtt-test");
+  // tapService.startPour(10, "mqtt-test"); // deprecated
 }
 
 void setup()

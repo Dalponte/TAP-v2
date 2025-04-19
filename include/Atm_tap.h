@@ -11,8 +11,8 @@ public:
     enum
     {
         INITIALIZING,
-        READY,
-        POURING,
+        READY,   // Maps to Atm_pour::IDLE
+        POURING, // Maps to Atm_pour::POURING
         DONE,
         DISCONNECTED,
     };
@@ -20,11 +20,12 @@ public:
     // Events
     enum
     {
-        EVT_CONNECTED,  // New event: transitions to READY from any state
-        EVT_POUR,       // Renamed from EVT_START: transitions from READY to POURING
-        EVT_STOP,       // Transitions from POURING to DONE
-        EVT_READY,      // New event: transitions from DONE to READY
-        EVT_DISCONNECT, // Transitions to DISCONNECTED from any state
+        EVT_CONNECTED,
+        EVT_POUR,  // Triggered by start()
+        EVT_STOP,  // Triggered by flow() when remaining expires or external stop
+        EVT_READY, // Triggered after DONE state
+        EVT_DISCONNECT,
+        EVT_TIMER, // When pouring ends by timeout
         ELSE
     };
 
@@ -47,34 +48,47 @@ public:
         ON_POURING,
         ON_DONE,
         ON_DISCONNECTED,
+        ON_FLOW_STATUS,
         CONN_MAX
     };
 
-    Atm_tap &begin();
+    // Modify begin signature to accept timeouts
+    Atm_tap &begin(int initial_timeout_ms = 10000, int continue_timeout_ms = 3000);
     int event(int id);
     void action(int id);
     Atm_tap &trace(Stream &stream);
 
-    // Add handler registration for state change
-    Atm_tap &onStateChange(atm_cb_push_t callback, int idx = 0);
+    // Add methods from Atm_pour
+    Atm_tap &start(int pulses, int id); // Changed id type to int
+    Atm_tap &flow();
+    Atm_tap &updateFlow();
+    int getCurrentId(); // Changed return type to int
 
-    // Add connector methods for each state
+    // Existing handler registration
+    Atm_tap &onStateChange(atm_cb_push_t callback, int idx = 0);
     Atm_tap &onInitializing(Machine &machine, int event = 0);
     Atm_tap &onInitializing(atm_cb_push_t callback, int idx = 0);
-
     Atm_tap &onReady(Machine &machine, int event = 0);
     Atm_tap &onReady(atm_cb_push_t callback, int idx = 0);
-
     Atm_tap &onPouring(Machine &machine, int event = 0);
     Atm_tap &onPouring(atm_cb_push_t callback, int idx = 0);
-
     Atm_tap &onDone(Machine &machine, int event = 0);
     Atm_tap &onDone(atm_cb_push_t callback, int idx = 0);
-
     Atm_tap &onDisconnected(Machine &machine, int event = 0);
     Atm_tap &onDisconnected(atm_cb_push_t callback, int idx = 0);
 
+    Atm_tap &onFlowStatus(Machine &machine, int event);
+    Atm_tap &onFlowStatus(atm_cb_push_t callback, int idx = 0);
+
 private:
-    // Connectors array
+    // Connectors array - size updated by CONN_MAX
     atm_connector connectors[CONN_MAX];
+
+    // Add members from Atm_pour
+    atm_timer_millis timer; // Timer for pouring timeout
+    atm_counter remaining;  // Counter state machine
+    int pour_pulses;        // Amount to pour
+    int initial_timeout;    // Initial timeout when starting pour
+    int continue_timeout;   // Timeout after flow detected
+    int current_id;         // Storage for the pour ID as integer
 };

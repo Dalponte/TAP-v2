@@ -2,7 +2,8 @@
 
 #include <Automaton.h>
 
-class Atm_pour : public Machine
+// Mark the class as deprecated
+[[deprecated("Atm_pour is deprecated. Use Atm_tap instead.")]] class Atm_pour : public Machine
 {
 public:
     Atm_pour(void) : Machine() {};
