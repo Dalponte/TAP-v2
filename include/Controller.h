@@ -8,6 +8,7 @@
 #include "Atm_mqtt_client.h"
 #include "LedService.h"
 #include "Atm_tap.h"
+#include "MessageUtils.h" // Ensure MessageUtils is included
 
 // Structure for tap configuration
 struct TapConfig
@@ -17,12 +18,12 @@ struct TapConfig
 };
 
 // Define structure for parsed JSON command
-struct JsonCommand
+struct Command
 {
     uint16_t tapId;
-    uint8_t commandType;
-    uint16_t pulses;
-    bool isValid; // Flag to indicate if parsing was successful
+    uint16_t commandType;
+    uint16_t param;
+    MessageErrorCode errorCode; // Add error code field
 };
 
 // Command types
@@ -47,20 +48,14 @@ public:
     // MQTT publish functionality
     void publish(const char *topic, const char *payload);
 
-    // Setup method for initial configuration
-    static void setup();
-
     // MQTT message handling
     static void handleMqttMessage(int messageSize);
 
     // Add processJsonCommand declaration
-    static void processJsonCommand(const JsonCommand &command);
+    static void processCommand(const Command &command);
 
     // Error handling method
     static void handleError(const char *errorMessage);
-
-    // Add parseJsonMessage declaration
-    static JsonCommand parseJsonMessage(const uint8_t *buffer, size_t length);
 
     // Connection event callbacks
     static void onConnected(int idx, int v, int up);
@@ -70,11 +65,7 @@ public:
     static void publishTapStateChanged(int idx, int state, int up);
 
     // Tap state callback handlers
-    static void onTapInitializing(int idx, int v, int up);
-    static void onTapReady(int idx, int v, int up);
-    static void onTapPouring(int idx, int v, int up);
     static void onTapDone(int idx, int v, int up);
-    static void onTapDisconnected(int idx, int v, int up);
 
     // Public attribute for tap machine
     Atm_tap _tap;

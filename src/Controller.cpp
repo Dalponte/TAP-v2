@@ -2,7 +2,6 @@
 #include <Arduino.h>
 #include "Atm_tap.h"
 #include "MessageUtils.h"
-#include <ArduinoJson.h>
 
 LedService *Controller::ledService = nullptr;
 Controller *Controller::_instance = nullptr;
@@ -38,14 +37,10 @@ Controller::Controller(LedService &led, const TapConfig &config)
     ledService->setRed(true);
     ledService->setGreen(true);
 
-    _tap.begin()
+    _tap.begin(*ledService) // Pass the LedService instance to Atm_tap's begin method
         .trace(Serial)
         .onStateChange(Controller::publishTapStateChanged)
-        .onInitializing(Controller::onTapInitializing)
-        .onReady(Controller::onTapReady)
-        .onPouring(Controller::onTapPouring)
-        .onDone(Controller::onTapDone)
-        .onDisconnected(Controller::onTapDisconnected);
+        .onDone(Controller::onTapDone);
 
     memset(_messageBuffer, 0, sizeof(_messageBuffer));
 }
@@ -62,26 +57,16 @@ void Controller::begin(uint8_t *mac, IPAddress ip, const char *broker, int port,
         .connect();
 }
 
-void Controller::setup()
-{
-}
-
 void Controller::onConnected(int idx, int v, int up)
 {
-    if (_instance)
-    {
-        _instance->_mqttClient.onMessage(handleMqttMessage);
-        _instance->_mqttClient.subscribe("tap/command");
-        _instance->_tap.trigger(Atm_tap::EVT_CONNECTED);
-    }
+    _instance->_mqttClient.onMessage(handleMqttMessage);
+    _instance->_mqttClient.subscribe("tap/command");
+    _instance->_tap.trigger(Atm_tap::EVT_CONNECTED);
 }
 
 void Controller::onDisconnected(int idx, int v, int up)
 {
-    if (_instance)
-    {
-        _instance->_tap.trigger(Atm_tap::EVT_DISCONNECT);
-    }
+    _instance->_tap.trigger(Atm_tap::EVT_DISCONNECT);
 }
 
 void Controller::publish(const char *topic, const char *payload)
@@ -89,46 +74,10 @@ void Controller::publish(const char *topic, const char *payload)
     _mqtt.publish(topic, payload);
 }
 
-JsonCommand Controller::parseJsonMessage(const uint8_t *buffer, size_t length)
-{
-    JsonCommand command = {0, 0, 0, false};
-    JsonDocument doc;
-
-    // Ensure null termination for the parser
-    char jsonString[length + 1];
-    memcpy(jsonString, buffer, length);
-    jsonString[length] = '\0';
-
-    DeserializationError error = deserializeJson(doc, jsonString);
-
-    if (error)
-    {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.c_str());
-        handleError(MessageUtils::getErrorDescription(MSG_JSON_PARSE_ERROR));
-        return command;
-    }
-
-    // Check if the expected structure is present using the recommended approach
-    if (!doc["data"].is<JsonArray>() || doc["data"].size() != 3)
-    {
-        handleError(MessageUtils::getErrorDescription(MSG_INVALID_FORMAT));
-        return command;
-    }
-
-    JsonArray data = doc["data"].as<JsonArray>();
-
-    // Extract data, assuming order: [tapId, commandType, pulses]
-    command.tapId = data[0].as<uint16_t>();
-    command.commandType = data[1].as<uint8_t>();
-    command.pulses = data[2].as<uint16_t>();
-    command.isValid = true; // Mark as valid if parsing succeeded
-
-    return command;
-}
-
 void Controller::handleError(const char *errorMessage)
 {
+    Serial.print("Error: ");
+    Serial.println(errorMessage);
     _instance->publish("tap/error", errorMessage);
 }
 
@@ -142,33 +91,25 @@ void Controller::handleMqttMessage(int messageSize)
     // Clear previous message buffer
     memset(_instance->_messageBuffer, 0, sizeof(_instance->_messageBuffer));
 
-    // Read the message into our buffer
     size_t index = 0;
-    while (_instance->_mqttClient.available() && index < sizeof(_instance->_messageBuffer) - 1) // Leave space for null terminator
+    while (_instance->_mqttClient.available() && index < sizeof(_instance->_messageBuffer) - 1)
     {
         _instance->_messageBuffer[index++] = (char)_instance->_mqttClient.read();
     }
-    _instance->_messageBuffer[index] = '\0'; // Null-terminate the buffer
 
-    // Print received message for debugging
-    Serial.print("Raw MQTT Message: ");
-    Serial.println((char *)_instance->_messageBuffer);
-    Serial.println("----------");
+    Command command = MessageUtils::parseCommand(_instance->_messageBuffer, index);
 
-    // Print basic message info
-    Serial.print("MQTT Message - Topic: ");
-    Serial.print(topicStr);
-    Serial.print(", Size: ");
-    Serial.println(index);
-
-    // Check if this is a command message
-    if (topicStr == "tap/command")
+    if (command.errorCode == MSG_SUCCESS)
     {
-        // Parse as JSON message
-        JsonCommand command = parseJsonMessage(_instance->_messageBuffer, index);
-
-        processJsonCommand(command);
+        processCommand(command);
     }
+    else
+    {
+        handleError(MessageUtils::getErrorDescription(command.errorCode));
+    }
+    Serial.print(topicStr);
+    Serial.print(" - size: ");
+    Serial.println(messageSize);
 }
 
 void Controller::publishTapStateChanged(int idx, int state, int up)
@@ -188,69 +129,52 @@ void Controller::publishTapStateChanged(int idx, int state, int up)
     _instance->publish("tap/state", msg);
 }
 
-void Controller::onTapInitializing(int idx, int v, int up)
-{
-    ledService->red();
-}
-
-void Controller::onTapReady(int idx, int v, int up)
-{
-    ledService->blue();
-}
-
-void Controller::onTapPouring(int idx, int v, int up)
-{
-    ledService->green();
-}
-
 void Controller::onTapDone(int idx, int poured, int remaining)
 {
-    ledService->red();
     char msg[64];
     snprintf(msg, sizeof(msg), "{\"data\":[%d,%d,%d]}", _instance->_config.tapId, poured, remaining);
     _instance->publish("tap/done", msg);
 }
 
-void Controller::onTapDisconnected(int idx, int v, int up)
+// Rename processJsonCommand to processCommand for clarity
+void Controller::processCommand(const Command &command) // Renamed parameter from processJsonCommand
 {
-    Serial.println("Tap state: DISCONNECTED");
-    ledService->setBlue(true);
-    ledService->setRed(true);
-    ledService->setGreen(true);
-}
-
-void Controller::processJsonCommand(const JsonCommand &command)
-{
-    if (!_instance || !command.isValid)
+    // Check if the command is for this specific tap instance
+    if (command.tapId != _instance->_config.tapId)
     {
-        handleError("Controller instance is null or command is invalid");
-        return;
+        Serial.print("Command ignored: Target Tap ID (");
+        Serial.print(command.tapId);
+        Serial.print(") does not match this Tap ID (");
+        Serial.print(_instance->_config.tapId);
+        Serial.println(").");
+        return; // Ignore commands not meant for this tap
     }
 
-    if (command.tapId != _instance->_config.tapId)
-        return;
-
     // Debug output
-    Serial.print("Tap ID: ");
+    Serial.println("Processing Command:");
+    Serial.print("  Tap ID: ");
     Serial.println(command.tapId);
-    Serial.print("Command: ");
+    Serial.print("  Command Type: ");
     Serial.println(command.commandType);
-    Serial.print("Pulses: ");
-    Serial.println(command.pulses);
+    Serial.print("  Pulses: ");
+    Serial.println(command.param);
 
     // Handle different commands
     switch (command.commandType)
     {
     case CMD_POUR:
-        _instance->_tap.start(command.pulses, command.tapId);
+        Serial.println("  Action: Starting pour.");
+        _instance->_tap.start(command.param, command.tapId);
         break;
     case CMD_CONTINUE:
+        Serial.println("  Action: Triggering READY event (Continue).");
         _instance->_tap.trigger(Atm_tap::EVT_READY);
+        break; // Added missing break statement
 
     default:
-        handleError(MessageUtils::getErrorDescription(MSG_UNKNOWN_COMMAND));
-        Serial.print("Command type: ");
+        Serial.print("  Action: Unknown command type received: ");
         Serial.println(command.commandType);
+        handleError(MessageUtils::getErrorDescription(MSG_UNKNOWN_COMMAND));
         break;
     }
 }

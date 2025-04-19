@@ -10,7 +10,7 @@
 Atm_button button;
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-IPAddress ip(192, 168, 4, 100);
+IPAddress ip(192, 168, 4, 99);
 const char broker[] = "192.168.4.2";
 int port = 1883;
 
@@ -36,8 +36,6 @@ void setup()
   Serial.begin(9600);
 
   controller.begin(mac, ip, broker, port, "client_id");
-
-  Controller::setup();
 
   button.begin(BUTTON_PIN);
   button.onPress(handleButtonPress);

@@ -1,8 +1,12 @@
 #include "Atm_tap.h"
 #include <Automaton.h>
 
-Atm_tap &Atm_tap::begin(int initial_timeout_ms, int continue_timeout_ms)
+// Update begin signature to accept LedService reference
+Atm_tap &Atm_tap::begin(LedService &led, int initial_timeout_ms, int continue_timeout_ms)
 {
+    // Store the LedService reference
+    ledService = &led;
+
     // clang-format off
     const static state_t state_table[] PROGMEM = {
         /*                   ON_ENTER            ON_LOOP  ON_EXIT  EVT_CONNECTED  EVT_POUR  EVT_STOP  EVT_READY  EVT_DISCONNECT  EVT_TIMER  ELSE */
@@ -45,41 +49,40 @@ void Atm_tap::action(int id)
     switch (id)
     {
     case ENT_INITIALIZING:
-        Serial.println("Atm_tap: Entering INITIALIZING state");
-        push(connectors, ON_INITIALIZING, 0, 0, 0);
-        push(connectors, ON_STATE_CHANGE, 0, state(), id);
+        ledService->red();
         return;
+
     case ENT_READY:
-        Serial.println("Atm_tap: Entering READY state");
-        push(connectors, ON_READY, 0, 0, 0);
-        push(connectors, ON_STATE_CHANGE, 0, state(), id);
+        ledService->blue();
         return;
+
     case ENT_POURING:
-        Serial.println("Atm_tap: Entering POURING state");
         timer.set(initial_timeout);
-        // Make sure the remaining counter is properly set from start()
         if (remaining.value < 1)
         {
             remaining.set(pour_pulses); // Ensure counter is set if start wasn't called right before
         }
-        push(connectors, ON_POURING, 0, 0, 0);
-        push(connectors, ON_STATE_CHANGE, 0, state(), id);
+        ledService->green();
         return;
+
     case ENT_DONE:
         Serial.println("Atm_tap: Entering DONE state");
+        ledService->red();
         // Send: pulses poured as v, remaining pulses as up using ON_DONE
         push(connectors, ON_DONE, 0, pour_pulses - remaining.value, remaining.value);
-        push(connectors, ON_STATE_CHANGE, 0, state(), id);
         return;
+
     case ENT_DISCONNECTED:
         Serial.println("Atm_tap: Entering DISCONNECTED state");
-        push(connectors, ON_DISCONNECTED, 0, 0, 0);
-        push(connectors, ON_STATE_CHANGE, 0, state(), id);
+        ledService->setBlue(true);
+        ledService->setRed(true);
+        ledService->setGreen(true);
         return;
     }
+
+    push(connectors, ON_STATE_CHANGE, 0, id, state());
 }
 
-// Implement start method from Atm_pour - updated for int id
 Atm_tap &Atm_tap::start(int pulses, int id)
 {
     if (state() == READY) // Only start if ready
@@ -87,15 +90,14 @@ Atm_tap &Atm_tap::start(int pulses, int id)
         pour_pulses = pulses;
         remaining.set(pulses);
 
-        // Store the integer ID
         current_id = id;
 
         Serial.print("Atm_tap: Starting pour > pulses: ");
         Serial.print(pulses);
         Serial.print(", ID: ");
-        Serial.println(id); // Print the integer ID
+        Serial.println(id);
 
-        trigger(EVT_POUR); // Trigger transition to POURING state
+        trigger(EVT_POUR);
     }
     else
     {

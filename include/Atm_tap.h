@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Automaton.h>
+#include "LedService.h" // Add include for LedService
 
 class Atm_tap : public Machine
 {
@@ -52,8 +53,8 @@ public:
         CONN_MAX
     };
 
-    // Modify begin signature to accept timeouts
-    Atm_tap &begin(int initial_timeout_ms = 10000, int continue_timeout_ms = 3000);
+    // Modify begin signature to accept LedService and timeouts
+    Atm_tap &begin(LedService &led, int initial_timeout_ms = 10000, int continue_timeout_ms = 3000);
     int event(int id);
     void action(int id);
     Atm_tap &trace(Stream &stream);
@@ -91,4 +92,5 @@ private:
     int initial_timeout;    // Initial timeout when starting pour
     int continue_timeout;   // Timeout after flow detected
     int current_id;         // Storage for the pour ID as integer
+    LedService *ledService; // Pointer to the LedService instance
 };
