@@ -1,8 +1,6 @@
 #include "Atm_pour.h"
 #include <Automaton.h>
 
-/* Remove extern LED reference since we'll use LedService */
-
 Atm_pour &Atm_pour::begin(int initial_timeout_ms, int continue_timeout_ms)
 {
     // clang-format off

@@ -8,9 +8,9 @@ Atm_tap &Atm_tap::begin()
         /*                   ON_ENTER            ON_LOOP  ON_EXIT  EVT_CONNECTED  EVT_POUR  EVT_STOP  EVT_READY  EVT_DISCONNECT  ELSE */
         /* INITIALIZING   */ ENT_INITIALIZING,      -1,      -1,      READY,        -1,       -1,       -1,        DISCONNECTED,   -1,
         /* READY          */ ENT_READY,             -1,      -1,      -1,           POURING,  -1,       -1,        DISCONNECTED,   -1,
-        /* POURING        */ ENT_POURING,           -1,      -1,      -1,           -1,       DONE,     -1,        DISCONNECTED,   -1,
-        /* DONE           */ ENT_DONE,              -1,      -1,      -1,           -1,       -1,       READY,     DISCONNECTED,   -1,
-        /* DISCONNECTED   */ ENT_DISCONNECTED,      -1,      -1,      INITIALIZING, -1,       -1,       -1,        -1,             -1,
+        /* POURING        */ ENT_POURING,           -1,      -1,      -1,           -1,       DONE,     -1,        -1,             -1,
+        /* DONE           */ ENT_DONE,              -1,      -1,      -1,           -1,       -1,       READY,     -1,             -1,
+        /* DISCONNECTED   */ ENT_DISCONNECTED,      -1,      -1,      READY,        -1,       -1,       -1,        -1,             -1,
     };
     // clang-format on
     Machine::begin(state_table, ELSE);

@@ -16,15 +16,13 @@ struct TapConfig
     const char *tapName;
 };
 
-// Binary protocol message format
-struct BinaryMessage
+// Define structure for parsed JSON command
+struct JsonCommand
 {
-    uint8_t protocolVersion; // Version of the protocol (for future compatibility)
-    uint16_t tapId;          // ID of the tap (integer value)
-    uint8_t commandType;     // Command type (1=pour, 2=stop, etc.)
-    uint16_t param1;         // Parameter 1 (e.g., pulses for pour)
-    uint16_t param2;         // Parameter 2 (reserved for future use)
-    uint16_t param3;         // Parameter 3 (reserved for future use)
+    uint16_t tapId;
+    uint8_t commandType;
+    uint16_t pulses;
+    bool isValid; // Flag to indicate if parsing was successful
 };
 
 // Command types
@@ -56,14 +54,14 @@ public:
     // MQTT message handling
     static void handleMqttMessage(int messageSize);
 
-    // Process binary message
-    static void processBinaryMessage(const BinaryMessage &message);
+    // Add processJsonCommand declaration
+    static void processJsonCommand(const JsonCommand &command);
 
     // Error handling method
     static void handleError(const char *errorMessage);
 
-    // Parse binary message
-    static bool parseBinaryMessage(const uint8_t *buffer, size_t length, BinaryMessage &message);
+    // Add parseJsonMessage declaration
+    static JsonCommand parseJsonMessage(const uint8_t *buffer, size_t length);
 
     // Connection event callbacks
     static void onConnected(int idx, int v, int up);
