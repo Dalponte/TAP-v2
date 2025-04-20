@@ -10,6 +10,13 @@
 #include "Atm_tap.h"
 #include "MessageUtils.h" // Ensure MessageUtils is included
 
+// Define pin constants
+#define FLOWMETER_PIN 21 // Flowmeter button simulation pin
+#define VALVE_PIN 22     // Mosfet valve simulation pin
+
+// Define timing constants
+#define FLOW_UPDATE_INTERVAL_MS 500
+
 // Structure for tap configuration
 struct TapConfig
 {
@@ -92,6 +99,15 @@ private:
     // Static references
     static LedService *ledService;
     static Controller *_instance;
+
+    // Flowmeter and valve components
+    Atm_digital _flowmeter;
+    Atm_timer _flow_update_timer;
+    Atm_led _valve; // Valve control
+    
+    // Flow update handler
+    static void handleFlowUpdateTimer(int idx, int v, int up);
+    static void handleFlow(int idx, int v, int up);
 };
 
 #endif // CONTROLLER_H

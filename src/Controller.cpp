@@ -37,6 +37,19 @@ Controller::Controller(LedService &led, const TapConfig &config)
     ledService->setRed(true);
     ledService->setGreen(true);
 
+    // Initialize valve
+    _valve.begin(VALVE_PIN);
+    _valve.trigger(_valve.EVT_OFF);
+
+    // Setup flow meter
+    _flowmeter.begin(FLOWMETER_PIN, 1, false, true)
+        .onChange(HIGH, handleFlow);
+
+    // Setup flow update timer
+    _flow_update_timer.begin(FLOW_UPDATE_INTERVAL_MS)
+        .repeat(ATM_COUNTER_OFF)
+        .onTimer(handleFlowUpdateTimer);
+
     _tap.begin(*ledService) // Pass the LedService instance to Atm_tap's begin method
         .trace(Serial)
         .onStateChange(Controller::publishTapStateChanged)
@@ -129,8 +142,16 @@ void Controller::publishTapStateChanged(int idx, int state, int up)
     _instance->publish("tap/state", msg);
 }
 
+// Update onTapDone to control the valve
 void Controller::onTapDone(int idx, int poured, int remaining)
 {
+    // Close valve when pour is done
+    if (_instance)
+    {
+        _instance->_flow_update_timer.stop();
+        _instance->_valve.trigger(_instance->_valve.EVT_OFF); // Close valve
+    }
+
     char msg[64];
     snprintf(msg, sizeof(msg), "{\"data\":[%d,%d,%d]}", _instance->_config.tapId, poured, remaining);
     _instance->publish("tap/done", msg);
@@ -164,6 +185,8 @@ void Controller::processCommand(const Command &command) // Renamed parameter fro
     {
     case CMD_POUR:
         Serial.println("  Action: Starting pour.");
+        _instance->_valve.trigger(_instance->_valve.EVT_ON); // Open valve
+        _instance->_flow_update_timer.start(); // Start flow timer
         _instance->_tap.start(command.param, command.tapId);
         break;
     case CMD_CONTINUE:
@@ -177,4 +200,15 @@ void Controller::processCommand(const Command &command) // Renamed parameter fro
         handleError(MessageUtils::getErrorDescription(MSG_UNKNOWN_COMMAND));
         break;
     }
+}
+
+// Flow meter and valve handlers
+void Controller::handleFlow(int idx, int v, int up)
+{
+    _instance->_tap.flow();
+}
+
+void Controller::handleFlowUpdateTimer(int idx, int v, int up)
+{
+    _instance->_tap.updateFlow();
 }
