@@ -74,6 +74,9 @@ public:
     // Tap state callback handlers
     static void onTapDone(int idx, int v, int up);
 
+    // Flow status callback handler
+    static void onFlowStatus(int idx, int flowRate, int totalPulses);
+
     // Public attribute for tap machine
     Atm_tap _tap;
 

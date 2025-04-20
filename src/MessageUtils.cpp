@@ -62,3 +62,35 @@ Command MessageUtils::parseCommand(const uint8_t *buffer, size_t size)
     // errorCode remains MSG_SUCCESS if we reach here
     return cmd;
 }
+
+// Implement the binary serialization for flow data
+size_t MessageUtils::serializeFlowData(uint8_t *buffer, size_t bufferSize, uint16_t id, uint16_t flowRate, uint16_t totalPulses)
+{
+    const size_t REQUIRED_SIZE = 6; // 3 * uint16_t
+    
+    if (buffer == nullptr || bufferSize < REQUIRED_SIZE)
+    {
+        return 0; // Buffer too small or null
+    }
+    
+    // Store values in big-endian format (network byte order)
+    // Tap ID
+    buffer[0] = (id >> 8) & 0xFF;
+    buffer[1] = id & 0xFF;
+    
+    // Flow rate
+    buffer[2] = (flowRate >> 8) & 0xFF;
+    buffer[3] = flowRate & 0xFF;
+    
+    // Total pulses
+    buffer[4] = (totalPulses >> 8) & 0xFF;
+    buffer[5] = totalPulses & 0xFF;
+    
+    return REQUIRED_SIZE;
+}
+
+// Helper method using FlowData struct
+size_t MessageUtils::serializeFlowData(uint8_t *buffer, size_t bufferSize, const FlowData &flowData)
+{
+    return serializeFlowData(buffer, bufferSize, flowData.id, flowData.flowRate, flowData.totalPulses);
+}

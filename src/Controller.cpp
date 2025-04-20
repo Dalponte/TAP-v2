@@ -53,7 +53,8 @@ Controller::Controller(LedService &led, const TapConfig &config)
     _tap.begin(*ledService) // Pass the LedService instance to Atm_tap's begin method
         .trace(Serial)
         .onStateChange(Controller::publishTapStateChanged)
-        .onDone(Controller::onTapDone);
+        .onDone(Controller::onTapDone)
+        .onFlowStatus(Controller::onFlowStatus); // Register flow status handler
 
     memset(_messageBuffer, 0, sizeof(_messageBuffer));
 }
@@ -211,4 +212,27 @@ void Controller::handleFlow(int idx, int v, int up)
 void Controller::handleFlowUpdateTimer(int idx, int v, int up)
 {
     _instance->_tap.updateFlow();
+}
+
+void Controller::onFlowStatus(int idx, int flowRate, int totalPulses)
+{
+    if (!_instance)
+        return;
+
+    // Use binary format for flow status messages
+    uint8_t binaryData[6]; // 6 bytes for binary flow data (3 * uint16_t)
+    size_t size = MessageUtils::serializeFlowData(
+        binaryData, 
+        sizeof(binaryData), 
+        _instance->_config.tapId, 
+        flowRate, 
+        totalPulses
+    );
+
+    // Publish binary data to MQTT
+    if (size > 0) {
+        _instance->_mqttClient.beginMessage("tap/flow", size, true, 0); // Use QoS 0, retained = true
+        _instance->_mqttClient.write(binaryData, size);
+        _instance->_mqttClient.endMessage();
+    }
 }
