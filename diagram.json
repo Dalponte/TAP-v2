@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "author": "Maico Dal Ponte",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-mega", "id": "mega", "top": 0, "left": 0 },
+    { "type": "wokwi-w5500", "id": "eth", "top": -200, "left": 200 },
+    { "type": "wokwi-led", "id": "led_red", "args": { "color": "red" }, "top": 100, "left": 200 },
+    { "type": "wokwi-led", "id": "led_green", "args": { "color": "green" }, "top": 150, "left": 200 },
+    { "type": "wokwi-led", "id": "led_blue", "args": { "color": "blue" }, "top": 200, "left": 200 },
+    { "type": "wokwi-pushbutton", "id": "btn_main", "args": { "color": "red" }, "top": 250, "left": 200 },
+    { "type": "wokwi-pushbutton", "id": "btn_flow", "args": { "color": "blue", "label": "Flow" }, "top": 300, "left": 200 },
+    { "type": "wokwi-led", "id": "valve", "args": { "color": "yellow", "label": "Valve" }, "top": 350, "left": 200 }
+  ],
+  "connections": [
+    [ "mega:GND.1", "led_red:C", "black", [] ],
+    [ "mega:GND.1", "led_green:C", "black", [] ],
+    [ "mega:GND.1", "led_blue:C", "black", [] ],
+    [ "mega:GND.2", "btn_main:2.R", "black", [] ],
+    [ "mega:GND.2", "btn_flow:2.R", "black", [] ],
+    [ "mega:GND.3", "valve:C", "black", [] ],
+
+    [ "mega:45", "led_red:A", "red", [] ],
+    [ "mega:46", "led_green:green", "green", [] ],
+    [ "mega:44", "led_blue:A", "blue", [] ],
+    [ "mega:23", "btn_main:1.L", "orange", [] ],
+    [ "mega:21", "btn_flow:1.L", "cyan", [] ],
+    [ "mega:22", "valve:A", "yellow", [] ],
+
+    [ "mega:50", "eth:MISO", "violet", [] ],
+    [ "mega:51", "eth:MOSI", "violet", [] ],
+    [ "mega:52", "eth:SCK", "violet", [] ],
+    [ "mega:10", "eth:CS", "violet", [] ],
+    [ "mega:5V", "eth:VCC", "red", [] ],
+    [ "mega:GND.4", "eth:GND", "black", [] ]
+  ],
+  "dependencies": {}
+}
